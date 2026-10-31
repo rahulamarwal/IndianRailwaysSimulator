@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>Indian Railways Loco-Pilot: Pune Jn to Lonavala</title>
+    <style>
+      :root {
+        --panel: rgba(255, 255, 255, 0.86);
+        --ink: #14243f;
+        --mut: #51607a;
+        --board: #f5c518;
+        --bad: #c62828;
+        --bg: #a9d0f0;
+        box-sizing: border-box;
+        padding-top: env(safe-area-inset-top, 0px);
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+      }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) {
+          --panel: rgba(10, 16, 30, 0.82);
+          --ink: #f2f5fb;
+          --mut: #9fb0c9;
+          --bad: #ff6b6b;
+          --bg: #10192b;
+        }
+      }
+      :root[data-theme="dark"] {
+        --panel: rgba(10, 16, 30, 0.82);
+        --ink: #f2f5fb;
+        --mut: #9fb0c9;
+        --bad: #ff6b6b;
+        --bg: #10192b;
+      }
+      html {
+        scroll-padding-top: env(safe-area-inset-top, 0px);
+      }
+      html, body {
+        margin: 0;
+        height: 100%;
+        overflow: hidden;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        user-select: none;
+        -webkit-user-select: none;
+      }
+      #c, #cab {
+        position: fixed;
+        inset: 0;
+      }
+      #cab {
+        pointer-events: none;
+        box-shadow: inset 0 0 80px 15px rgba(0, 0, 0, 0.25);
+        transition: opacity 0.2s ease;
+      }
+      .p {
+        position: fixed;
+        background: var(--panel);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        border-radius: 10px;
+        padding: 10px 14px;
+        font-size: 14px;
+        line-height: 1.5;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+        z-index: 10;
+      }
+      #spd {
+        left: 14px;
+        bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+        border-left: 6px solid var(--board);
+        min-width: 140px;
+      }
+      #kmh {
+        font-size: 56px;
+        font-weight: 700;
+        line-height: 1;
+        font-variant-numeric: tabular-nums;
+      }
+      #kmh.bad, #lim.bad {
+        color: var(--bad);
+      }
+      #info {
+        left: 14px;
+        top: calc(14px + env(safe-area-inset-top, 0px));
+      }
+      #help {
+        right: 14px;
+        top: calc(14px + env(safe-area-inset-top, 0px));
+        max-width: 250px;
+        font-size: 12px;
+        color: var(--mut);
+      }
+      #msg {
+        left: 50%;
+        top: 20%;
+        transform: translateX(-50%);
+        text-align: center;
+        width: min(520px, 88vw);
+        font-size: 17px;
+        border-top: 6px solid var(--board);
+        display: none;
+      }
+      .hud-title {
+        font-weight: 600;
+        color: var(--mut);
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="c"></div>
+    <div id="cab"></div>
+
+    <div class="p" id="spd">
+      <div><span id="kmh">0</span> <small style="font-size: 20px; font-weight: 600;">km/h</small></div>
+      <div id="lim">Limit 100</div>
+    </div>
+
+    <div class="p" id="info">
+      <div id="rv">Reverser: FORWARD [F]</div>
+      <div id="nt">Throttle notch 0 of 8</div>
+      <div id="br">Brake 0%</div>
+      <div id="gr">Level track</div>
+      <div id="nx">Signal: Green</div>
+      <div id="tm">Time 0:00. To stop mark 0 m</div>
+    </div>
+
+    <div class="p" id="help">
+      <strong>Loco Controls:</strong><br>
+      <b>W / ↑:</b> Throttle Notch Up (auto-releases brake)<br>
+      <b>S / ↓:</b> Throttle Notch Down / Brake<br>
+      <b>Q / E:</b> Apply / Release Brake (tap or hold)<br>
+      <b>Space:</b> Emergency Brake<br>
+      <b>F:</b> Reverser (Forward / Reverse)<br>
+      <b>H:</b> Dual-tone horn<br>
+      <b>C:</b> Camera view (Track / Chase / 3D Cab)<br>
+      <b>R:</b> Restart route
+    </div>
+
+    <div class="p" id="msg"></div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

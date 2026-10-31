@@ -1,0 +1,78 @@
+{
+  "id": "pune-lonavala",
+  "name": "Pune Jn to Lonavala (Suburban Electric Corridor)",
+  "startDistance": 240,
+  "stopTargetDistance": 3230,
+  "platformEndDistance": 3290,
+  "track": {
+    "startZ": -100,
+    "endZ": 3500,
+    "gauge": 1.676,
+    "sleeperSpacing": 0.65,
+    "mastSpacing": 60,
+    "contactWireY": 6.0,
+    "catenaryWireY": 6.7
+  },
+  "train": {
+    "massKg": 380000,
+    "coaches": 8,
+    "maxNotch": 8,
+    "maxPowerWatts": 6500000,
+    "maxStartingTractiveEffortN": 480000
+  },
+  "gradients": [
+    { "s": 0, "grade": 0.006 },
+    { "s": 800, "grade": 0.0 },
+    { "s": 1500, "grade": -0.01 },
+    { "s": 2300, "grade": 0.0 }
+  ],
+  "speedLimits": [
+    { "s": 0, "limitKmh": 100 },
+    { "s": 950, "limitKmh": 75 },
+    { "s": 1300, "limitKmh": 100 },
+    { "s": 2250, "limitKmh": 40 },
+    { "s": 3000, "limitKmh": 15 }
+  ],
+  "signals": [
+    { "z": 320, "aspect": "G" },
+    { "z": 880, "aspect": "G" },
+    { "z": 1350, "aspect": "G" },
+    { "z": 1850, "aspect": "DY" },
+    { "z": 2350, "aspect": "Y" },
+    { "z": 2900, "aspect": "G" }
+  ],
+  "boards": [
+    { "z": 60, "text": "100", "bg": "#c62828" },
+    { "z": 950, "text": "75", "bg": "#c62828" },
+    { "z": 1300, "text": "100", "bg": "#c62828" },
+    { "z": 2250, "text": "40", "bg": "#c62828" },
+    { "z": 3000, "text": "15", "bg": "#c62828" },
+    { "z": 3256, "text": "STOP", "bg": "#111111" }
+  ],
+  "stations": [
+    {
+      "name": "PUNE JN",
+      "devanagari": "पुणे जंक्शन",
+      "startZ": 0,
+      "endZ": 260
+    },
+    {
+      "name": "SHIVAJI NAGAR",
+      "devanagari": "शिवाजीनगर",
+      "startZ": 1000,
+      "endZ": 1260
+    },
+    {
+      "name": "KHADKI",
+      "devanagari": "खडकी",
+      "startZ": 2000,
+      "endZ": 2260
+    },
+    {
+      "name": "LONAVALA",
+      "devanagari": "लोणावळा",
+      "startZ": 3000,
+      "endZ": 3260
+    }
+  ]
+}
