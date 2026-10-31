@@ -103,8 +103,19 @@ window.addEventListener('keydown', e => {
   if (e.code === 'Space') {
     e.preventDefault();
     physics.triggerEmergency();
+  } else if (e.code === 'KeyP') {
+    e.preventDefault();
+    const isDone = physics.toggleEndJourney();
+    if (isDone) {
+      hud.showFinishCard(physics.getStopScore());
+    } else {
+      hud.hideBanner();
+    }
   } else if (e.code === 'KeyW' || e.code === 'ArrowUp') {
     e.preventDefault();
+    if (physics.state.done) {
+      hud.hideBanner();
+    }
     physics.notchUp();
   } else if (e.code === 'KeyS' || e.code === 'ArrowDown') {
     e.preventDefault();
@@ -150,14 +161,10 @@ function animate(now: number): void {
   lastTime = now;
 
   const prevMoving = physics.state.run;
-  const justFinished = physics.update(dt, Boolean(keys['KeyQ']), Boolean(keys['KeyE']));
+  physics.update(dt, Boolean(keys['KeyQ']), Boolean(keys['KeyE']));
 
   if (!prevMoving && physics.state.run) {
     hud.hideBanner();
-  }
-
-  if (justFinished) {
-    hud.showFinishCard(physics.getStopScore());
   }
 
   const { s, v } = physics.state;

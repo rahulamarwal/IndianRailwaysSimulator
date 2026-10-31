@@ -42,7 +42,8 @@ export class HUD {
   public showStartBanner(routeName = 'Lonavala to Pune & Daund Junction'): void {
     this.msgEl.style.display = 'block';
     this.msgEl.innerHTML =
-      `<b>${routeName}</b><br>Press W or ↑ to notch up and depart. Stops: Shivaji Nagar, Pune Jn, Uruli, Daund Jn.`;
+      `<b>${routeName}</b><br>Press <b>W / ↑</b> to notch up and depart. Stops: Shivaji Nagar, Pune Jn, Uruli, Daund Jn.<br>` +
+      `<span style="font-size: 13px; color: var(--mut); margin-top: 4px; display: inline-block;">Stops at stations will NOT end the journey &bull; Press <b>P</b> to Park / End Journey & view score.</span>`;
   }
 
   public hideBanner(): void {
@@ -53,8 +54,8 @@ export class HUD {
     this.msgEl.style.display = 'block';
     this.msgEl.innerHTML =
       `<b>${scoreResult.statusText}</b><br>` +
-      `Time ${scoreResult.timeFormatted}. Overspeed ${scoreResult.overspeedSeconds.toFixed(1)} s. ` +
-      `Score ${scoreResult.score}.<br>Press R to drive again.`;
+      `Trip Time: <b>${scoreResult.timeFormatted}</b> &bull; Overspeed: <b>${scoreResult.overspeedSeconds.toFixed(1)} s</b> &bull; Trip Score: <b>${scoreResult.score} / 1000</b><br>` +
+      `<span style="font-size: 13px; color: var(--mut); margin-top: 6px; display: inline-block;">Press <b>P</b> or <b>W / ↑</b> to resume journey &bull; Press <b>R</b> to restart route</span>`;
   }
 
   public setCameraMode(mode: CameraMode): void {

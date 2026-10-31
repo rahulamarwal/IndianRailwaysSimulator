@@ -57,15 +57,25 @@ export class TrainPhysics {
     return 100;
   }
 
-  public notchUp(): void {
-    if (!this.state.done) {
-      // Auto-release brakes if driver demands tractive notch
-      if (this.state.bc > 0 || this.state.b > 0) {
-        this.state.bc = 0;
-        this.state.b = 0;
-      }
-      this.state.n = Math.min(this.route.train.maxNotch, this.state.n + 1);
+  public toggleEndJourney(): boolean {
+    this.state.done = !this.state.done;
+    if (this.state.done) {
+      this.state.n = 0;
+      this.state.bc = 0.6;
     }
+    return this.state.done;
+  }
+
+  public notchUp(): void {
+    if (this.state.done) {
+      this.state.done = false;
+    }
+    // Auto-release brakes if driver demands tractive notch
+    if (this.state.bc > 0 || this.state.b > 0) {
+      this.state.bc = 0;
+      this.state.b = 0;
+    }
+    this.state.n = Math.min(this.route.train.maxNotch, this.state.n + 1);
   }
 
   public notchDown(): void {
@@ -199,36 +209,53 @@ export class TrainPhysics {
       st.os += dt;
     }
 
-    // Finish condition: overran platform or stopped inside platform area after driving
-    const finished = st.s > this.route.platformEndDistance ||
-      (st.s > 3000 && Math.abs(st.v) < 0.05 && st.t > 5);
-
-    if (finished) {
-      st.done = true;
-      return true;
+    // Track bounds safety stop at yard buffer stop
+    if (st.s >= this.route.track.endZ - 40) {
+      st.s = this.route.track.endZ - 40;
+      st.v = 0;
     }
 
+    // Never auto-finish on stop! The journey continues through all stations and signals.
+    // The player ends/parks the journey by pressing 'P'.
     return false;
   }
 
   public getStopScore(): StopScoreResult {
     const st = this.state;
     const e = st.s - this.route.stopTargetDistance;
-    const sc = Math.max(
-      0,
-      1000 - Math.round(st.os * 15) - Math.round(Math.abs(e) * 6) - Math.max(0, Math.round(st.t - 240)) * 2
-    );
 
-    let r = '';
-    if (st.s > this.route.platformEndDistance) {
-      r = 'Overran the platform';
-    } else if (Math.abs(e) <= 26) {
-      r = 'Perfect stop on the platform';
-    } else if (e < 0) {
-      r = `Stopped ${Math.round(-e)} m short`;
-    } else {
-      r = `Overshot by ${Math.round(e)} m`;
+    // Determine station or location where train is parked
+    let closestStation = this.route.stations[0];
+    let minStationDist = Infinity;
+    for (const station of this.route.stations) {
+      const mid = (station.startZ + station.endZ) / 2;
+      const dist = Math.abs(st.s - mid);
+      if (dist < minStationDist) {
+        minStationDist = dist;
+        closestStation = station;
+      }
     }
+
+    const isAtStation = minStationDist < 160;
+    let r = '';
+    if (st.s >= this.route.stopTargetDistance - 40 && st.s <= this.route.platformEndDistance + 50) {
+      if (Math.abs(e) <= 26) {
+        r = 'Perfect stop at Daund Junction (Terminus)!';
+      } else {
+        r = `Arrived at Daund Junction (${Math.abs(Math.round(e))} m from stop board)`;
+      }
+    } else if (isAtStation) {
+      r = `Parked at ${closestStation.name} Station (${closestStation.devanagari})`;
+    } else {
+      r = `Journey Concluded on Mainline at km ${(st.s / 1000).toFixed(2)}`;
+    }
+
+    // Score: distance traversed (up to 750) + station accuracy bonus (up to 250) - overspeed penalty
+    const progressRatio = Math.min(1, Math.max(0, st.s / this.route.stopTargetDistance));
+    const distScore = Math.round(progressRatio * 750);
+    const stationBonus = isAtStation ? Math.max(50, 250 - Math.round(minStationDist)) : 0;
+    const overspeedPenalty = Math.round(st.os * 10);
+    const sc = Math.max(0, Math.min(1000, distScore + stationBonus - overspeedPenalty));
 
     const min = Math.floor(st.t / 60);
     const sec = String(Math.floor(st.t % 60)).padStart(2, '0');
