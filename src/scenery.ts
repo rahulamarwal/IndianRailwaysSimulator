@@ -156,7 +156,10 @@ export function buildScenery(ctx: RendererContext, config: TrackConfig): THREE.G
   palmCrowns.instanceMatrix.needsUpdate = true;
   sceneryGroup.add(palmTrunks, palmCrowns);
 
-  // 5. Mula-Mutha River Rail Bridge Crossing (between Shivaji Nagar & Pune: z = 3100 to 3350)
+  // =========================================================================
+  // 5. MULA-MUTHA RIVER RAIL BRIDGE CROSSING (BETWEEN SHIVAJI NAGAR & PUNE: z = 3100 to 3340)
+  // Completely underneath and outside the tracks (Zero collision with trains!)
+  // =========================================================================
   const riverGroup = new THREE.Group();
   const riverWaterMat = new THREE.MeshStandardMaterial({
     color: 0x1a4668,
@@ -164,44 +167,112 @@ export function buildScenery(ctx: RendererContext, config: TrackConfig): THREE.G
     roughness: 0.12
   });
 
-  // Glistening River Surface
-  const riverGeo = new THREE.PlaneGeometry(380, 240);
+  // Glistening River Surface deep below the tracks (y = -2.2m)
+  const riverGeo = new THREE.PlaneGeometry(420, 260);
   const riverMesh = new THREE.Mesh(riverGeo, riverWaterMat);
   riverMesh.rotation.x = -Math.PI / 2;
-  const riverPos = getCurvePos(2.65, 3225, -0.6);
-  riverMesh.position.set(riverPos.x, -0.6, riverPos.z);
-  riverMesh.rotation.z = riverPos.yaw;
+  const riverMidPos = getCurvePos(2.65, 3225);
+  riverMesh.position.set(riverMidPos.x, -2.2, riverMidPos.z);
+  riverMesh.rotation.z = riverMidPos.yaw;
   riverGroup.add(riverMesh);
 
-  // River Bank Sand / Rock Slopes
-  const bankMat = createMaterial(0x574837, { roughness: 0.95 });
-  [-110, 110].forEach(bz => {
-    const bank = new THREE.Mesh(new THREE.BoxGeometry(380, 1.4, 25), bankMat);
-    bank.position.set(riverPos.x, 0.1, riverPos.z + bz);
-    riverGroup.add(bank);
-  });
+  // Curved Bridge Deck Girder directly UNDER the trackbed (y = 0.05m to -0.65m)
+  const bridgeGirderMat = createMaterial(0x3e454d, { metalness: 0.75, roughness: 0.35 });
+  const bridgeDeckStep = 4.0;
+  const bridgeSlices = Math.ceil(240 / bridgeDeckStep);
+  const girderPos: number[] = [];
+  const girderIndices: number[] = [];
 
-  // Massive Concrete Bridge Piers plunging into the river beneath tracks
+  const railingMat = createMaterial(0x64748b, { metalness: 0.8, roughness: 0.3 });
+  const leftRailingPos: number[] = [];
+  const rightRailingPos: number[] = [];
+  const railingIndices: number[] = [];
+
+  for (let i = 0; i <= bridgeSlices; i++) {
+    const z = 3100 + i * bridgeDeckStep;
+    const pt = getTrackCurve(z);
+    const nx = Math.cos(pt.yaw);
+    const nz = -Math.sin(pt.yaw);
+
+    // Girder spans from normal offset x = -4.4 to +10.0 (covers Track 1 and Track 2)
+    const lx = pt.x - 4.4 * nx;
+    const lz = z - 4.4 * nz;
+    const rx = pt.x + 10.0 * nx;
+    const rz = z + 10.0 * nz;
+
+    // Girder 4 vertices: Top-Left, Bottom-Left, Top-Right, Bottom-Right (all UNDER the ballast!)
+    girderPos.push(lx, 0.05, lz);
+    girderPos.push(lx, -0.65, lz);
+    girderPos.push(rx, 0.05, rz);
+    girderPos.push(rx, -0.65, rz);
+
+    // Guard Railing: Top & Bottom lines along outer edges (well clear of trains)
+    leftRailingPos.push(lx, 0.45, lz);
+    leftRailingPos.push(lx, 1.35, lz);
+
+    rightRailingPos.push(rx, 0.45, rz);
+    rightRailingPos.push(rx, 1.35, rz);
+
+    if (i < bridgeSlices) {
+      const b = i * 4;
+      const nb = (i + 1) * 4;
+      // Top face
+      girderIndices.push(b + 0, b + 2, nb + 2);
+      girderIndices.push(b + 0, nb + 2, nb + 0);
+      // Bottom face
+      girderIndices.push(b + 1, nb + 3, b + 3);
+      girderIndices.push(b + 1, nb + 1, nb + 3);
+      // Left side
+      girderIndices.push(b + 0, nb + 0, nb + 1);
+      girderIndices.push(b + 0, nb + 1, b + 1);
+      // Right side
+      girderIndices.push(b + 2, b + 3, nb + 3);
+      girderIndices.push(b + 2, nb + 3, nb + 2);
+
+      const rb = i * 2;
+      const nrb = (i + 1) * 2;
+      railingIndices.push(rb + 0, rb + 1, nrb + 1);
+      railingIndices.push(rb + 0, nrb + 1, nrb + 0);
+    }
+  }
+
+  const girderGeo = new THREE.BufferGeometry();
+  girderGeo.setAttribute('position', new THREE.Float32BufferAttribute(girderPos, 3));
+  girderGeo.setIndex(girderIndices);
+  girderGeo.computeVertexNormals();
+  const girderMesh = new THREE.Mesh(girderGeo, bridgeGirderMat);
+  girderMesh.receiveShadow = true;
+  riverGroup.add(girderMesh);
+
+  // Railing meshes (left and right outer edges, completely clear of tracks)
+  const lRailGeo = new THREE.BufferGeometry();
+  lRailGeo.setAttribute('position', new THREE.Float32BufferAttribute(leftRailingPos, 3));
+  lRailGeo.setIndex(railingIndices);
+  lRailGeo.computeVertexNormals();
+  const lRailMesh = new THREE.Mesh(lRailGeo, railingMat);
+
+  const rRailGeo = new THREE.BufferGeometry();
+  rRailGeo.setAttribute('position', new THREE.Float32BufferAttribute(rightRailingPos, 3));
+  rRailGeo.setIndex(railingIndices);
+  rRailGeo.computeVertexNormals();
+  const rRailMesh = new THREE.Mesh(rRailGeo, railingMat);
+
+  riverGroup.add(lRailMesh, rRailMesh);
+
+  // Massive Concrete Bridge Piers plunging into the river beneath tracks (top at y = -0.65m)
   const pierMat = createMaterial(0x8c857b, { roughness: 0.9 });
-  const pierGeo = new THREE.BoxGeometry(14, 4.2, 4.0);
+  const pierGeo = new THREE.BoxGeometry(13.6, 3.4, 3.6);
   [3140, 3190, 3240, 3290].forEach(pz => {
-    const pPos = getCurvePos(2.65, pz, 1.6);
+    const pPos = getCurvePos(2.65, pz);
     const pier = new THREE.Mesh(pierGeo, pierMat);
-    pier.position.set(pPos.x, 1.2, pPos.z);
+    // Center at y = -2.35m, height 3.4m -> top is at y = -0.65m (under girder, 1.19m BELOW rails!)
+    pier.position.set(pPos.x, -2.35, pPos.z);
     pier.rotation.y = pPos.yaw;
     pier.castShadow = true;
+    pier.receiveShadow = true;
     riverGroup.add(pier);
   });
 
-  // Steel Railing Girders along the bridge deck
-  const bridgeRailingMat = createMaterial(0x3e454d, { metalness: 0.7, roughness: 0.3 });
-  [-4.2, 9.6].forEach(rx => {
-    const railing = new THREE.Mesh(new THREE.BoxGeometry(0.3, 1.1, 240), bridgeRailingMat);
-    const rPos = getCurvePos(rx, 3225, 1.2);
-    railing.position.set(rPos.x, 1.2, rPos.z);
-    railing.rotation.y = rPos.yaw;
-    riverGroup.add(railing);
-  });
   sceneryGroup.add(riverGroup);
 
   // 6. Rustic Konkan / Ghat Clay Huts with Mangalore Tile Roofs
@@ -467,15 +538,16 @@ export function buildScenery(ctx: RendererContext, config: TrackConfig): THREE.G
   sceneryGroup.add(pylons, pylonArms);
 
   // 7. Indian Railways Level Crossing Gates (LC Gates at z = 4800 and 7400)
+  // Booms and cabins placed safely outside railway clearance envelope
   [4800, 7400].forEach(lcZ => {
     const lcGroup = new THREE.Group();
     const lcPos = getCurvePos(2.65, lcZ, 0);
     lcGroup.position.set(lcPos.x, 0, lcPos.z);
     lcGroup.rotation.y = lcPos.yaw;
 
-    // Asphalt Road crossing perpendicular to tracks
+    // Asphalt Road crossing perpendicular to tracks (width 8.5m along Z)
     const roadMat = createMaterial(0x27272a, { roughness: 0.95 });
-    const road = new THREE.Mesh(new THREE.PlaneGeometry(80, 10), roadMat);
+    const road = new THREE.Mesh(new THREE.PlaneGeometry(80, 8.5), roadMat);
     road.rotation.x = -Math.PI / 2;
     road.position.set(0, 0.08, 0);
 
@@ -483,32 +555,35 @@ export function buildScenery(ctx: RendererContext, config: TrackConfig): THREE.G
     roadStripe.rotation.x = -Math.PI / 2;
     roadStripe.position.set(0, 0.09, 0);
 
-    // Gateman Cabin
+    // Gateman Cabin (placed far outside tracks on the left)
     const cabin = new THREE.Mesh(new THREE.BoxGeometry(4.2, 3.2, 3.4), createMaterial(0xfafaf9));
-    cabin.position.set(-6.8, 2.0, -8);
+    cabin.position.set(-8.5, 2.0, -7.5);
     const cabinRoof = new THREE.Mesh(new THREE.BoxGeometry(4.6, 0.35, 3.8), createMaterial(0x991b1b));
-    cabinRoof.position.set(-6.8, 3.75, -8);
+    cabinRoof.position.set(-8.5, 3.75, -7.5);
 
-    // Boom Barriers with Red Stop Discs
-    [-4.5, 9.8].forEach((bx, sideIdx) => {
+    // Boom Barriers blocking the ROAD (Left at x = -7.2, Right at x = +12.5)
+    // Clear of Track 1 (-0.84) and Track 2 (+6.14)
+    [-7.2, 12.5].forEach((bx, sideIdx) => {
       const barrierPost = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 1.4, 8), createMaterial(0x18181b));
-      barrierPost.position.set(bx, 1.1, -4.2);
+      barrierPost.position.set(bx, 0.9, -4.25);
 
-      const boom = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 8.5), createMaterial(0xdc2626));
-      boom.position.set(bx, 1.6, 0);
-      boom.rotation.x = Math.PI / 2;
+      // Horizontal boom extending across the road along Z
+      const boom = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 8.2), createMaterial(0xdc2626));
+      boom.position.set(bx, 1.25, 0);
 
+      // Red Stop Disc facing the road
       const stopDisc = new THREE.Mesh(new THREE.CircleGeometry(0.35, 16), createMaterial(0xdc2626));
-      stopDisc.position.set(bx + (sideIdx === 0 ? 0.1 : -0.1), 1.6, 0);
-      stopDisc.rotation.y = sideIdx === 0 ? Math.PI / 2 : -Math.PI / 2;
+      stopDisc.position.set(bx + (sideIdx === 0 ? -0.1 : 0.1), 1.25, 0);
+      stopDisc.rotation.y = sideIdx === 0 ? -Math.PI / 2 : Math.PI / 2;
 
       lcGroup.add(barrierPost, boom, stopDisc);
     });
 
-    // Parked Indian Auto-Rickshaws
-    [-18, 22].forEach(autoX => {
+    // Parked Indian Auto-Rickshaws waiting on the road outside the barrier
+    [-17, 21].forEach(autoX => {
       const autoRickshaw = new THREE.Group();
-      autoRickshaw.position.set(autoX, 0.45, 2.2);
+      autoRickshaw.position.set(autoX, 0.45, 1.8);
+      autoRickshaw.rotation.y = autoX < 0 ? Math.PI / 2 : -Math.PI / 2;
 
       const lowerBody = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.8, 2.6), createMaterial(0x15803d));
       lowerBody.position.y = 0.55;
@@ -526,58 +601,98 @@ export function buildScenery(ctx: RendererContext, config: TrackConfig): THREE.G
     sceneryGroup.add(lcGroup);
   });
 
-  // 8. Crossing Indian Railways Freight Train on Track 2 (Up Line) at Loni sidings (z = 5750)
-  const freightGroup = new THREE.Group();
-  const fPos = getCurvePos(5.30, 5750, 0);
-  freightGroup.position.set(fPos.x, 0, fPos.z);
-  freightGroup.rotation.y = fPos.yaw;
+  // =========================================================================
+  // 8. CROSSING INDIAN RAILWAYS FREIGHT TRAIN ON TRACK 2 (UP LINE) AT LONI SIDINGS (z = 5710 to 5890)
+  // Standing on Track 2 (Up Line) facing oncoming traffic, snaking smoothly along the curve!
+  // =========================================================================
+  const wag9Group = new THREE.Group();
+  const locoZ = 5710;
+  const lPos = getCurvePos(5.30, locoZ);
+  wag9Group.position.set(lPos.x, 0, lPos.z);
+  wag9Group.rotation.y = lPos.yaw + Math.PI; // Facing towards oncoming trains from Pune / Lonavala
 
-  // WAG-9 Heavy Freight Locomotive (Emerald Green Livery #047857)
-  const wag9Body = new THREE.Mesh(
-    new THREE.BoxGeometry(3.2, 3.8, 20.5),
-    createMaterial(0x047857, { roughness: 0.5, metalness: 0.3 })
-  );
-  wag9Body.position.set(0, 2.9, 0);
+  const wag9BodyMat = createMaterial(0x047857, { roughness: 0.5, metalness: 0.3 });
+  const wag9StripeMat = createMaterial(0xfacc15);
+  const wag9RoofMat = createMaterial(0x71717a);
+  const bogieMat = createMaterial(0x18181b);
+  const headlightMat = new THREE.MeshBasicMaterial({ color: 0xfffbeb });
+
+  // Main Cab Body
+  const wag9Body = new THREE.Mesh(new THREE.BoxGeometry(3.2, 3.4, 20.5), wag9BodyMat);
+  wag9Body.position.set(0, 2.75, 0);
   wag9Body.castShadow = true;
 
-  const wag9Stripe = new THREE.Mesh(new THREE.BoxGeometry(3.22, 0.4, 20.6), createMaterial(0xfacc15));
-  wag9Stripe.position.set(0, 2.7, 0);
+  // Yellow Warning Chevron Stripe
+  const wag9Stripe = new THREE.Mesh(new THREE.BoxGeometry(3.22, 0.42, 20.6), wag9StripeMat);
+  wag9Stripe.position.set(0, 2.55, 0);
 
-  const wag9Roof = new THREE.Mesh(new THREE.BoxGeometry(3.0, 0.4, 18.0), createMaterial(0x71717a));
-  wag9Roof.position.set(0, 4.9, 0);
-  freightGroup.add(wag9Body, wag9Stripe, wag9Roof);
+  // Roof & Pantograph
+  const wag9Roof = new THREE.Mesh(new THREE.BoxGeometry(3.0, 0.4, 18.0), wag9RoofMat);
+  wag9Roof.position.set(0, 4.65, 0);
 
-  // 10 BTPN Petroleum Oil Tankers
+  // Co-Co Bogies (Wheelsets at rail level y = 0.54)
+  [-6.2, 6.2].forEach(bz => {
+    const bogie = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.65, 4.8), bogieMat);
+    bogie.position.set(0, 0.72, bz);
+    wag9Group.add(bogie);
+  });
+
+  // Glowing Headlights on the front cab (facing oncoming trains)
+  [-0.65, 0.65].forEach(hx => {
+    const headlight = new THREE.Mesh(new THREE.CircleGeometry(0.24, 16), headlightMat);
+    headlight.position.set(hx, 3.1, 10.3);
+    wag9Group.add(headlight);
+  });
+
+  // Pantograph touching the Track 2 contact wire (y = 6.0m)
+  const pantoArm = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.04, 0.04, 1.4, 8),
+    createMaterial(0xd83a2e, { metalness: 0.7 })
+  );
+  pantoArm.position.set(0, 5.4, -4.5);
+  wag9Group.add(wag9Body, wag9Stripe, wag9Roof, pantoArm);
+  sceneryGroup.add(wag9Group);
+
+  // 10 BTPN Cylindrical Petroleum Oil Tanker Wagons individually curved along Track 2
   const btpnTankMat = createMaterial(0x1c3829, { roughness: 0.45, metalness: 0.25 });
   const btpnStripeMat = createMaterial(0xf59e0b);
-  const bogieMat = createMaterial(0x18181b);
 
   for (let w = 0; w < 10; w++) {
-    const wagonZ = 22.0 + w * 14.5;
+    const wz = 5738.5 + w * 14.6;
+    const wPos = getCurvePos(5.30, wz);
     const wagon = new THREE.Group();
-    wagon.position.set(0, 0, wagonZ);
+    wagon.position.set(wPos.x, 0, wPos.z);
+    wagon.rotation.y = wPos.yaw;
 
-    const tankMesh = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.4, 12.0, 16), btpnTankMat);
+    // Tanker Barrel (Radius 1.4m, Center y = 2.65m)
+    const tankMesh = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.4, 11.8, 18), btpnTankMat);
     tankMesh.rotation.x = Math.PI / 2;
-    tankMesh.position.set(0, 2.6, 0);
+    tankMesh.position.set(0, 2.65, 0);
     tankMesh.castShadow = true;
 
-    const domeMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.4, 10), btpnStripeMat);
-    domeMesh.position.set(0, 4.1, 0);
+    // Yellow Hazmat Warning Band
+    const bandMesh = new THREE.Mesh(new THREE.CylinderGeometry(1.42, 1.42, 1.2, 18), btpnStripeMat);
+    bandMesh.rotation.x = Math.PI / 2;
+    bandMesh.position.set(0, 2.65, 0);
 
+    // Top Dome Manhole
+    const domeMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.4, 10), btpnStripeMat);
+    domeMesh.position.set(0, 4.15, 0);
+
+    // Chassis Underframe
     const chassis = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.35, 12.8), bogieMat);
     chassis.position.set(0, 1.15, 0);
 
+    // CASNUB Bogies (at rail level y = 0.54)
     [-4.2, 4.2].forEach(bz => {
       const bogie = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.65, 2.2), bogieMat);
-      bogie.position.set(0, 0.65, bz);
+      bogie.position.set(0, 0.68, bz);
       wagon.add(bogie);
     });
 
-    wagon.add(tankMesh, domeMesh, chassis);
-    freightGroup.add(wagon);
+    wagon.add(tankMesh, bandMesh, domeMesh, chassis);
+    sceneryGroup.add(wagon);
   }
-  sceneryGroup.add(freightGroup);
 
   // 9. Urban Trees along Industrial Corridor (z >= 3900)
   const urbanTreeCount = 140;
