@@ -1,0 +1,107 @@
+{
+  "id": "pune-daund",
+  "name": "Pune Jn to Daund Jn (Central Railway Industrial Double Track)",
+  "startDistance": 240,
+  "stopTargetDistance": 5750,
+  "platformEndDistance": 5820,
+  "track": {
+    "startZ": -150,
+    "endZ": 6100,
+    "gauge": 1.676,
+    "sleeperSpacing": 0.65,
+    "mastSpacing": 60,
+    "contactWireY": 6.0,
+    "catenaryWireY": 6.7
+  },
+  "train": {
+    "massKg": 380000,
+    "coaches": 8,
+    "maxNotch": 8,
+    "maxPowerWatts": 6500000,
+    "maxStartingTractiveEffortN": 480000
+  },
+  "gradients": [
+    { "s": 0, "grade": 0.003 },
+    { "s": 1200, "grade": 0.0 },
+    { "s": 2100, "grade": -0.004 },
+    { "s": 3200, "grade": 0.002 },
+    { "s": 4300, "grade": 0.0 },
+    { "s": 5200, "grade": -0.003 }
+  ],
+  "speedLimits": [
+    { "s": 0, "limitKmh": 40 },
+    { "s": 350, "limitKmh": 110 },
+    { "s": 1000, "limitKmh": 75 },
+    { "s": 1450, "limitKmh": 130 },
+    { "s": 3200, "limitKmh": 100 },
+    { "s": 3650, "limitKmh": 130 },
+    { "s": 4300, "limitKmh": 80 },
+    { "s": 4750, "limitKmh": 110 },
+    { "s": 5350, "limitKmh": 40 },
+    { "s": 5600, "limitKmh": 15 }
+  ],
+  "signals": [
+    { "z": 320, "aspect": "G" },
+    { "z": 950, "aspect": "G" },
+    { "z": 1500, "aspect": "G" },
+    { "z": 2050, "aspect": "G" },
+    { "z": 2600, "aspect": "G" },
+    { "z": 3150, "aspect": "G" },
+    { "z": 3700, "aspect": "G" },
+    { "z": 4250, "aspect": "DY" },
+    { "z": 4750, "aspect": "G" },
+    { "z": 5250, "aspect": "DY" },
+    { "z": 5500, "aspect": "Y" }
+  ],
+  "boards": [
+    { "z": 60, "text": "40", "bg": "#c62828" },
+    { "z": 350, "text": "110", "bg": "#c62828" },
+    { "z": 1000, "text": "75", "bg": "#c62828" },
+    { "z": 1450, "text": "130", "bg": "#c62828" },
+    { "z": 3200, "text": "100", "bg": "#c62828" },
+    { "z": 3650, "text": "130", "bg": "#c62828" },
+    { "z": 4300, "text": "80", "bg": "#c62828" },
+    { "z": 4750, "text": "110", "bg": "#c62828" },
+    { "z": 5350, "text": "40", "bg": "#c62828" },
+    { "z": 5600, "text": "15", "bg": "#c62828" },
+    { "z": 5750, "text": "STOP", "bg": "#111111" }
+  ],
+  "stations": [
+    {
+      "name": "PUNE JN",
+      "devanagari": "पुणे जंक्शन",
+      "startZ": 0,
+      "endZ": 280
+    },
+    {
+      "name": "HADAPSAR",
+      "devanagari": "हडपसर",
+      "startZ": 1100,
+      "endZ": 1380
+    },
+    {
+      "name": "MANJARI BK",
+      "devanagari": "मांजरी बुद्रुक",
+      "startZ": 2200,
+      "endZ": 2480
+    },
+    {
+      "name": "LONI",
+      "devanagari": "लोणी काळभोर",
+      "startZ": 3300,
+      "endZ": 3580
+    },
+    {
+      "name": "URULI",
+      "devanagari": "उरुळी कांचन",
+      "startZ": 4400,
+      "endZ": 4680
+    },
+    {
+      "name": "DAUND JN",
+      "devanagari": "दौंड जंक्शन",
+      "startZ": 5500,
+      "endZ": 5800
+    }
+  ]
+}

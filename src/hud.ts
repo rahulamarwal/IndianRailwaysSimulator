@@ -27,10 +27,10 @@ export class HUD {
     this.cabVignetteEl = document.getElementById('cab')!;
   }
 
-  public showStartBanner(): void {
+  public showStartBanner(routeName = 'Pune Jn to Daund Jn (Double Track Electrified Mainline)'): void {
     this.msgEl.style.display = 'block';
     this.msgEl.innerHTML =
-      '<b>Pune Jn to Lonavala</b><br>Press W or ↑ to notch up and depart. Stop with the loco nose beside the STOP board, inside the platform.';
+      `<b>${routeName}</b><br>Press W or ↑ to notch up and depart. Stop beside the STOP board at Daund Junction.`;
   }
 
   public hideBanner(): void {

@@ -8,7 +8,7 @@ import { buildTrain } from './train';
 import { AudioController } from './audio';
 import { HUD } from './hud';
 import { CameraMode, RouteData } from './types';
-import routeDataJson from './data/pune-lonavala.json';
+import routeDataJson from './data/pune-daund.json';
 
 const route: RouteData = routeDataJson as RouteData;
 
@@ -56,7 +56,7 @@ function handleReset(): void {
   physics.reset();
   trainAssembly.setPositionZ(physics.state.s);
   applyCamera(physics.state.s, physics.state.v);
-  hud.showStartBanner();
+  hud.showStartBanner(route.name);
 }
 
 // Input Handling

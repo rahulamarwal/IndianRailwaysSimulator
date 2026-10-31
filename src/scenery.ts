@@ -4,229 +4,496 @@ import { TrackConfig } from './types';
 
 export function buildScenery(ctx: RendererContext, config: TrackConfig): THREE.Group {
   const sceneryGroup = new THREE.Group();
-  const { scene, createMaterial } = ctx;
+  const { scene, createMaterial, createCanvasTexture } = ctx;
   const { startZ, endZ } = config;
   const trackLength = endZ - startZ;
 
-  // Deterministic PRNG
-  let seed = 19;
+  let seed = 73;
   const rnd = (): number => {
     seed = (seed * 16807) % 2147483647;
     return seed / 2147483647;
   };
 
-  // ==========================================
-  // 1. WESTERN GHATS (SAHYADRI BASALT PLATEAUS & RIDGES)
-  // ==========================================
-  // Deccan Traps feature distinct stepped basalt mesas with flat table tops and rocky cliffs
-  const rockMat = createMaterial(0x3e3831, { roughness: 0.95, metalness: 0.05 });
-  const plateauCapMat = createMaterial(0x426829, { roughness: 0.85, metalness: 0.05 });
-  const farMountainMat = createMaterial(0x4a6566, { roughness: 0.9 }); // Atmospheric blue-green haze
-
-  // Function to create a stepped basalt plateau / mesa
-  const createBasaltMesa = (
-    radiusBase: number,
-    radiusTop: number,
-    height: number,
-    sides: number,
-    x: number,
-    z: number,
-    isDistant = false
-  ): THREE.Group => {
-    const mesaGroup = new THREE.Group();
-
-    // Rocky escarpment base
-    const cliffGeo = new THREE.CylinderGeometry(radiusTop, radiusBase, height, sides);
-    const cliff = new THREE.Mesh(cliffGeo, isDistant ? farMountainMat : rockMat);
-    cliff.position.y = height / 2;
-    mesaGroup.add(cliff);
-
-    // Green grassy plateau top
-    if (!isDistant) {
-      const capGeo = new THREE.CylinderGeometry(radiusTop * 1.02, radiusTop, height * 0.12, sides);
-      const cap = new THREE.Mesh(capGeo, plateauCapMat);
-      cap.position.y = height + (height * 0.06);
-      mesaGroup.add(cap);
-    }
-
-    mesaGroup.position.set(x, 0, z);
-    return mesaGroup;
-  };
-
-  // Near-range Ghats ridges (both sides of track)
-  for (let i = 0; i < 32; i++) {
-    const side = i % 2 === 0 ? 1 : -1;
-    const x = side * (240 + rnd() * 220);
-    const z = startZ + (i / 32) * trackLength + (rnd() - 0.5) * 80;
-    const baseR = 100 + rnd() * 90;
-    const topR = baseR * (0.45 + rnd() * 0.25);
-    const h = 75 + rnd() * 70;
-    const sides = 7 + Math.floor(rnd() * 3);
-
-    const mesa = createBasaltMesa(baseR, topR, h, sides, x, z, false);
-    sceneryGroup.add(mesa);
-  }
-
-  // Distant grand Sahyadri peaks (creating layered depth)
-  for (let i = 0; i < 20; i++) {
-    const side = i % 2 === 0 ? 1 : -1;
-    const x = side * (580 + rnd() * 450);
-    const z = startZ + (i / 20) * trackLength + (rnd() - 0.5) * 160;
-    const baseR = 260 + rnd() * 180;
-    const topR = baseR * (0.3 + rnd() * 0.2);
-    const h = 180 + rnd() * 140;
-
-    const farMesa = createBasaltMesa(baseR, topR, h, 8, x, z, true);
-    sceneryGroup.add(farMesa);
-  }
-
-  // ==========================================
-  // 2. AUTHENTIC INDIAN TREES (BANYAN / NEEM & PALMS)
-  // ==========================================
-
-  // A. Broadleaf Canopy Trees (Neem / Banyan / Peepal)
-  // Sculpted trunk + multiple organic foliage spheres
-  const trunkMat = createMaterial(0x463728, { roughness: 0.9 });
-  const foliageMat1 = createMaterial(0x2d5921, { roughness: 0.8 }); // Dark emerald
-  const foliageMat2 = createMaterial(0x3e732c, { roughness: 0.8 }); // Lush monsoon green
-  const foliageMat3 = createMaterial(0x528236, { roughness: 0.8 }); // Olive sunlit green
-
-  const broadleafCount = 380;
-  const broadleafTrunks = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.3, 0.45, 4.2, 7), trunkMat, broadleafCount);
-  const broadleafCrowns1 = new THREE.InstancedMesh(new THREE.DodecahedronGeometry(3.2, 1), foliageMat1, broadleafCount);
-  const broadleafCrowns2 = new THREE.InstancedMesh(new THREE.DodecahedronGeometry(2.6, 1), foliageMat2, broadleafCount);
-  const broadleafCrowns3 = new THREE.InstancedMesh(new THREE.DodecahedronGeometry(2.1, 1), foliageMat3, broadleafCount);
-
   const dummy = new THREE.Object3D();
 
-  for (let i = 0; i < broadleafCount; i++) {
-    const side = rnd() < 0.5 ? -1 : 1;
-    const x = side * (12 + rnd() * 160);
-    const z = startZ + rnd() * trackLength;
-    const s = 0.75 + rnd() * 0.8;
+  // ==========================================
+  // 1. INDIAN RESIDENTIAL APARTMENTS & HUMAN HOMES
+  // (Multi-storey concrete colonies, flat terraces, Sintex water tanks, satellite dishes)
+  // ==========================================
+  const buildingColors = [
+    0xd97706, // Warm Indian Ochre / Saffron
+    0xbe123c, // Terracotta / Dusty Rose
+    0x059669, // Mint / Olive Green
+    0xfef3c7, // Warm Cream / Ivory
+    0x0284c7, // Light Sky Blue
+    0xea580c, // Sandstone Orange
+    0x475569  // Exposed Concrete Grey
+  ];
 
-    // Trunk
-    dummy.position.set(x, 2.1 * s, z);
-    dummy.scale.set(s, s, s);
-    dummy.rotation.y = rnd() * Math.PI * 2;
-    dummy.updateMatrix();
-    broadleafTrunks.setMatrixAt(i, dummy.matrix);
+  // Procedural Window & Balcony Texture for Apartment Blocks
+  const buildingTexture = createCanvasTexture(512, 512, (c, w, h) => {
+    c.fillStyle = '#e5e0d8';
+    c.fillRect(0, 0, w, h);
 
-    // Primary canopy lobe
-    dummy.position.set(x, (4.2 + 1.8) * s, z);
-    dummy.scale.set(s * 1.1, s * 0.85, s * 1.1);
-    dummy.updateMatrix();
-    broadleafCrowns1.setMatrixAt(i, dummy.matrix);
+    // Weathered plaster streaks
+    for (let i = 0; i < 4000; i++) {
+      const px = Math.random() * w;
+      const py = Math.random() * h;
+      c.fillStyle = 'rgba(0,0,0,0.03)';
+      c.fillRect(px, py, 2, 4);
+    }
 
-    // Secondary offset canopy lobe (giving natural spreading shape)
-    dummy.position.set(x + (rnd() - 0.5) * 2.2 * s, (4.2 + 2.5) * s, z + (rnd() - 0.5) * 2.2 * s);
-    dummy.scale.set(s * 0.9, s * 0.75, s * 0.9);
-    dummy.updateMatrix();
-    broadleafCrowns2.setMatrixAt(i, dummy.matrix);
+    // Grid of windows with black security grills and concrete chhajja sunshades
+    const floors = 6;
+    const bays = 8;
+    const dw = w / bays;
+    const dh = h / floors;
 
-    // Tertiary top crown lobe
-    dummy.position.set(x + (rnd() - 0.5) * 1.5 * s, (4.2 + 3.2) * s, z + (rnd() - 0.5) * 1.5 * s);
-    dummy.scale.set(s * 0.75, s * 0.65, s * 0.75);
+    for (let f = 0; f < floors; f++) {
+      for (let b = 0; b < bays; b++) {
+        const wx = b * dw + 12;
+        const wy = f * dh + 16;
+        const ww = dw - 24;
+        const wh = dh - 32;
+
+        // Concrete chhajja sunshade above window
+        c.fillStyle = '#9e9689';
+        c.fillRect(wx - 4, wy - 8, ww + 8, 6);
+
+        // Window opening (dark glass)
+        c.fillStyle = '#182430';
+        c.fillRect(wx, wy, ww, wh);
+
+        // Metal security grill pattern
+        c.strokeStyle = '#4a5568';
+        c.lineWidth = 1.5;
+        c.strokeRect(wx, wy, ww, wh);
+        c.beginPath();
+        c.moveTo(wx + ww / 2, wy);
+        c.lineTo(wx + ww / 2, wy + wh);
+        c.moveTo(wx, wy + wh / 2);
+        c.lineTo(wx + ww, wy + wh / 2);
+        c.stroke();
+      }
+    }
+  });
+  buildingTexture.wrapS = THREE.RepeatWrapping;
+  buildingTexture.wrapT = THREE.RepeatWrapping;
+
+  const buildingMat = new THREE.MeshStandardMaterial({
+    roughness: 0.85,
+    metalness: 0.1,
+    map: buildingTexture
+  });
+
+  const buildingCount = 140;
+  const buildingGeo = new THREE.BoxGeometry(16, 14, 12);
+  const buildings = new THREE.InstancedMesh(buildingGeo, buildingMat, buildingCount);
+  buildings.castShadow = true;
+  buildings.receiveShadow = true;
+
+  // Terrace Rooftop Details: Sintex black water tanks & stairwell penthouses
+  const tankMat = createMaterial(0x18181b, { roughness: 0.7 }); // Black polyethylene
+  const tankGeo = new THREE.CylinderGeometry(0.85, 0.85, 1.6, 12);
+  const waterTanks = new THREE.InstancedMesh(tankGeo, tankMat, buildingCount * 2);
+
+  const penthouseMat = createMaterial(0xd6d3d1, { roughness: 0.9 });
+  const penthouseGeo = new THREE.BoxGeometry(4.0, 2.6, 3.5);
+  const penthouses = new THREE.InstancedMesh(penthouseGeo, penthouseMat, buildingCount);
+
+  let tankIdx = 0;
+
+  for (let i = 0; i < buildingCount; i++) {
+    // Distribute buildings in suburban clusters outside railway reservation
+    const side = i % 2 === 0 ? -1 : 1;
+    const x = side === -1
+      ? -35 - rnd() * 85
+      : 28 + rnd() * 85;
+    const z = startZ + 80 + (i / buildingCount) * (trackLength - 160) + (rnd() - 0.5) * 60;
+
+    const heightVar = 0.7 + rnd() * 0.7; // 2 to 4 storeys
+    const rot = (rnd() - 0.5) * 0.35;
+
+    // Building Main Structure
+    dummy.position.set(x, 7 * heightVar, z);
+    dummy.scale.set(0.9 + rnd() * 0.4, heightVar, 0.8 + rnd() * 0.5);
+    dummy.rotation.set(0, rot, 0);
     dummy.updateMatrix();
-    broadleafCrowns3.setMatrixAt(i, dummy.matrix);
+    buildings.setMatrixAt(i, dummy.matrix);
+    buildings.setColorAt(i, new THREE.Color(buildingColors[i % buildingColors.length]));
+
+    // Rooftop Staircase Penthouse Room
+    const roofY = 14 * heightVar;
+    dummy.position.set(x + (rnd() - 0.5) * 4, roofY + 1.3, z + (rnd() - 0.5) * 3);
+    dummy.scale.set(1, 1, 1);
+    dummy.updateMatrix();
+    penthouses.setMatrixAt(i, dummy.matrix);
+
+    // 2 Sintex Water Tanks on the flat terrace roof
+    [-1.8, 1.8].forEach(dx => {
+      dummy.position.set(x + dx, roofY + 0.8, z + (rnd() - 0.5) * 4);
+      dummy.scale.set(1, 1, 1);
+      dummy.updateMatrix();
+      waterTanks.setMatrixAt(tankIdx++, dummy.matrix);
+    });
   }
 
-  broadleafTrunks.instanceMatrix.needsUpdate = true;
-  broadleafCrowns1.instanceMatrix.needsUpdate = true;
-  broadleafCrowns2.instanceMatrix.needsUpdate = true;
-  broadleafCrowns3.instanceMatrix.needsUpdate = true;
+  buildings.instanceMatrix.needsUpdate = true;
+  if (buildings.instanceColor) buildings.instanceColor.needsUpdate = true;
+  waterTanks.instanceMatrix.needsUpdate = true;
+  penthouses.instanceMatrix.needsUpdate = true;
 
-  broadleafTrunks.castShadow = true;
-  broadleafCrowns1.castShadow = true;
-  broadleafCrowns2.castShadow = true;
-  broadleafCrowns3.castShadow = true;
+  sceneryGroup.add(buildings, waterTanks, penthouses);
 
-  sceneryGroup.add(broadleafTrunks, broadleafCrowns1, broadleafCrowns2, broadleafCrowns3);
+  // Concrete Boundary Security Walls (separating colony streets from railway corridor)
+  const wallMat = createMaterial(0x8a8479, { roughness: 0.9 });
+  const wallGeo = new THREE.BoxGeometry(0.3, 2.2, trackLength);
+  const leftWall = new THREE.Mesh(wallGeo, wallMat);
+  leftWall.position.set(-18, 1.1, (startZ + endZ) / 2);
+  leftWall.castShadow = true;
+  leftWall.receiveShadow = true;
 
-  // B. Tropical Western Ghats Coconut & Date Palms
-  const palmCount = 180;
-  const palmTrunkMat = createMaterial(0x5c4d3c, { roughness: 0.9 });
-  const palmFrondMat = createMaterial(0x367825, { roughness: 0.7 });
+  const rightWall = new THREE.Mesh(wallGeo, wallMat);
+  rightWall.position.set(22, 1.1, (startZ + endZ) / 2);
+  rightWall.castShadow = true;
+  rightWall.receiveShadow = true;
+  sceneryGroup.add(leftWall, rightWall);
 
-  const palmTrunks = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.18, 0.28, 8.5, 6), palmTrunkMat, palmCount);
-  const palmCrowns = new THREE.InstancedMesh(new THREE.ConeGeometry(3.5, 1.8, 6), palmFrondMat, palmCount);
+  // ==========================================
+  // 2. INDUSTRIAL PLANTS, WAREHOUSES & GODOWNS (HADAPSAR / LONI)
+  // ==========================================
+  const shedCount = 45;
+  const shedWallMat = createMaterial(0x64748b, { roughness: 0.7 }); // Industrial slate grey
+  const shedRoofMat = createMaterial(0x991b1b, { roughness: 0.6, metalness: 0.3 }); // Corrugated oxide red
+  const shedGeo = new THREE.BoxGeometry(26, 9, 36);
+  const shedRoofGeo = new THREE.BoxGeometry(28, 0.4, 38);
 
-  for (let i = 0; i < palmCount; i++) {
-    const side = rnd() < 0.5 ? -1 : 1;
-    const x = side * (18 + rnd() * 120);
-    const z = startZ + rnd() * trackLength;
-    const s = 0.8 + rnd() * 0.6;
+  const sheds = new THREE.InstancedMesh(shedGeo, shedWallMat, shedCount);
+  const shedRoofs = new THREE.InstancedMesh(shedRoofGeo, shedRoofMat, shedCount);
+  sheds.castShadow = true;
+  sheds.receiveShadow = true;
+  shedRoofs.castShadow = true;
 
-    // Curved/slanted trunk
-    dummy.position.set(x, 4.25 * s, z);
-    dummy.scale.set(s, s, s);
-    dummy.rotation.set((rnd() - 0.5) * 0.2, rnd() * Math.PI * 2, (rnd() - 0.5) * 0.2);
+  for (let i = 0; i < shedCount; i++) {
+    const side = i % 2 === 0 ? -1 : 1;
+    const x = side === -1 ? -55 - rnd() * 50 : 45 + rnd() * 60;
+    const z = startZ + 200 + (i / shedCount) * (trackLength - 400);
+
+    // Industrial Godown Main Body
+    dummy.position.set(x, 4.5, z);
+    dummy.scale.set(1, 1, 1);
+    dummy.rotation.set(0, (rnd() - 0.5) * 0.2, 0);
     dummy.updateMatrix();
-    palmTrunks.setMatrixAt(i, dummy.matrix);
+    sheds.setMatrixAt(i, dummy.matrix);
 
-    // Radiating palm crown top
-    dummy.position.set(x, 8.4 * s, z);
-    dummy.scale.set(s * 1.2, -s * 0.8, s * 1.2); // Inverted cone looks like drooping palm fronds
+    // Pitched Corrugated Roof
+    dummy.position.set(x, 9.2, z);
     dummy.updateMatrix();
-    palmCrowns.setMatrixAt(i, dummy.matrix);
+    shedRoofs.setMatrixAt(i, dummy.matrix);
   }
 
-  palmTrunks.instanceMatrix.needsUpdate = true;
-  palmCrowns.instanceMatrix.needsUpdate = true;
-  palmTrunks.castShadow = true;
-  palmCrowns.castShadow = true;
-  sceneryGroup.add(palmTrunks, palmCrowns);
+  sheds.instanceMatrix.needsUpdate = true;
+  shedRoofs.instanceMatrix.needsUpdate = true;
+  sceneryGroup.add(sheds, shedRoofs);
+
+  // Industrial Smoke Stacks / Factory Chimneys (Red & White hazard rings)
+  const chimneyCount = 14;
+  const chimneyMat = createMaterial(0xe2e8f0, { roughness: 0.8 });
+  const chimneyGeo = new THREE.CylinderGeometry(1.4, 2.2, 36, 16);
+  const chimneys = new THREE.InstancedMesh(chimneyGeo, chimneyMat, chimneyCount);
+  chimneys.castShadow = true;
+
+  for (let i = 0; i < chimneyCount; i++) {
+    const side = i % 2 === 0 ? -1 : 1;
+    const x = side === -1 ? -85 - rnd() * 40 : 75 + rnd() * 40;
+    const z = startZ + 400 + i * 380;
+    dummy.position.set(x, 18, z);
+    dummy.scale.set(1, 1, 1);
+    dummy.updateMatrix();
+    chimneys.setMatrixAt(i, dummy.matrix);
+  }
+  chimneys.instanceMatrix.needsUpdate = true;
+  sceneryGroup.add(chimneys);
 
   // ==========================================
-  // 3. TRACKSIDE INDIAN RAILWAYS INFRASTRUCTURE
+  // 3. LONI PETROLEUM STORAGE TANK FARM (HPCL / IOCL TERMINAL)
   // ==========================================
+  // Massive cylindrical oil tanks around Loni (Z = 2800m to 3600m)
+  const oilTankGroup = new THREE.Group();
+  const oilTankMat = createMaterial(0xf1f5f9, { roughness: 0.35, metalness: 0.4 }); // High-reflectance white enamel
+  const oilTankHazardMat = createMaterial(0x0284c7); // Blue IOCL corporate band
 
-  // A. Kilometer Stones (Standard white concrete posts every 200m)
-  const kmPostCount = Math.floor(trackLength / 200);
-  const kmPostMat = createMaterial(0xefefef, { roughness: 0.7 });
-  const kmPostGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.9, 12);
-  const kmPostGroup = new THREE.InstancedMesh(kmPostGeo, kmPostMat, kmPostCount);
+  const tankLocations = [
+    { x: -50, z: 2950, r: 12, h: 14 },
+    { x: -78, z: 3020, r: 14, h: 14 },
+    { x: -54, z: 3120, r: 11, h: 12 },
+    { x: -82, z: 3220, r: 15, h: 15 },
+    { x: -48, z: 3340, r: 12, h: 14 },
+    { x: -75, z: 3450, r: 13, h: 14 }
+  ];
 
-  for (let i = 0; i < kmPostCount; i++) {
-    const z = startZ + i * 200;
-    dummy.position.set(2.4, 0.75, z);
+  tankLocations.forEach(t => {
+    // Cylindrical Storage Tank Body
+    const tankMesh = new THREE.Mesh(new THREE.CylinderGeometry(t.r, t.r, t.h, 24), oilTankMat);
+    tankMesh.position.set(t.x, t.h / 2, t.z);
+    tankMesh.castShadow = true;
+    tankMesh.receiveShadow = true;
+
+    // Corporate Identity Color Ring
+    const bandMesh = new THREE.Mesh(new THREE.CylinderGeometry(t.r * 1.01, t.r * 1.01, 1.8, 24), oilTankHazardMat);
+    bandMesh.position.set(t.x, t.h * 0.75, t.z);
+
+    // Concrete Containment Dyke Bund Wall
+    const bundWall = new THREE.Mesh(
+      new THREE.BoxGeometry(t.r * 2.6, 1.6, t.r * 2.6),
+      createMaterial(0xa8a29e, { roughness: 0.9 })
+    );
+    bundWall.position.set(t.x, 0.8, t.z);
+
+    oilTankGroup.add(tankMesh, bandMesh, bundWall);
+  });
+  sceneryGroup.add(oilTankGroup);
+
+  // ==========================================
+  // 4. HIGH-VOLTAGE ELECTRICAL TRANSMISSION PYLONS
+  // (4-legged steel lattice towers crossing over the countryside)
+  // ==========================================
+  const pylonMat = createMaterial(0x94a3b8, { metalness: 0.85, roughness: 0.25 });
+  const pylonCount = 18;
+  const pylonGroup = new THREE.Group();
+
+  for (let i = 0; i < pylonCount; i++) {
+    const side = i % 2 === 0 ? -1 : 1;
+    const x = side * (45 + (i % 3) * 15);
+    const z = startZ + 250 + i * 320;
+
+    const pylon = new THREE.Group();
+    pylon.position.set(x, 0, z);
+
+    // 4 Tapered Lattice Corner Legs
+    const legHeight = 22;
+    const legGeo = new THREE.CylinderGeometry(0.08, 0.12, legHeight, 4);
+    [-1, 1].forEach(lx => {
+      [-1, 1].forEach(lz => {
+        const leg = new THREE.Mesh(legGeo, pylonMat);
+        leg.position.set(lx * 2.2, legHeight / 2, lz * 2.2);
+        leg.rotation.x = -lz * 0.08;
+        leg.rotation.z = lx * 0.08;
+        pylon.add(leg);
+      });
+    });
+
+    // 3 Crossarm Gantries for High-Voltage Conductors
+    [14, 18, 21].forEach((y, idx) => {
+      const armWidth = 10 - idx * 1.8;
+      const crossarm = new THREE.Mesh(new THREE.BoxGeometry(armWidth, 0.35, 0.35), pylonMat);
+      crossarm.position.set(0, y, 0);
+      pylon.add(crossarm);
+    });
+
+    pylonGroup.add(pylon);
+  }
+  sceneryGroup.add(pylonGroup);
+
+  // ==========================================
+  // 5. STACKED SHIPPING CONTAINERS & LOGISTICS YARDS
+  // ==========================================
+  const containerColors = [0x1e3a8a, 0x991b1b, 0x065f46, 0xd97706];
+  const containerCount = 60;
+  const containerGeo = new THREE.BoxGeometry(2.4, 2.6, 6.0); // Standard 20ft ISO container
+  const containers = new THREE.InstancedMesh(containerGeo, createMaterial(0xffffff, { roughness: 0.6, metalness: 0.3 }), containerCount);
+  containers.castShadow = true;
+  containers.receiveShadow = true;
+
+  for (let i = 0; i < containerCount; i++) {
+    const isStackTier2 = i % 3 === 0;
+    const clusterX = i < 30 ? -42 : 36;
+    const clusterZ = startZ + 1200 + (i % 15) * 8;
+
+    dummy.position.set(clusterX + (i % 2) * 3.0, isStackTier2 ? 3.9 : 1.3, clusterZ);
     dummy.scale.set(1, 1, 1);
     dummy.rotation.set(0, 0, 0);
     dummy.updateMatrix();
-    kmPostGroup.setMatrixAt(i, dummy.matrix);
+    containers.setMatrixAt(i, dummy.matrix);
+    containers.setColorAt(i, new THREE.Color(containerColors[i % containerColors.length]));
   }
-  kmPostGroup.instanceMatrix.needsUpdate = true;
-  sceneryGroup.add(kmPostGroup);
+  containers.instanceMatrix.needsUpdate = true;
+  if (containers.instanceColor) containers.instanceColor.needsUpdate = true;
+  sceneryGroup.add(containers);
 
-  // B. Signal Equipment Relay Huts (Whitewashed / Ochre masonry with red tiled roofs)
-  const hutWallMat = createMaterial(0xdfd8c4);
-  const hutRoofMat = createMaterial(0xa04232); // Indian red clay roof tile
-  const hutLocations = [1680, 2280, 2880]; // Beside MACLS signals
+  // ==========================================
+  // 6. LEVEL CROSSING (PHATAK / LC GATE) WITH ROAD TRAFFIC
+  // ==========================================
+  // Level Crossing at Z = 1850m (Manjari) and Z = 4050m (Uruli)
+  [1850, 4050].forEach(lcZ => {
+    const lcGroup = new THREE.Group();
 
-  hutLocations.forEach(z => {
-    const hut = new THREE.Group();
-    const hutBase = new THREE.Mesh(new THREE.BoxGeometry(3.2, 2.6, 2.4), hutWallMat);
-    hutBase.position.set(4.8, 1.4, z);
+    // Asphalt Road Crossing both tracks
+    const road = new THREE.Mesh(
+      new THREE.BoxGeometry(60, 0.08, 9.0),
+      createMaterial(0x27272a, { roughness: 0.9 })
+    );
+    road.position.set(2.65, 0.42, lcZ);
+    road.receiveShadow = true;
 
-    const hutRoof = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.35, 2.8), hutRoofMat);
-    hutRoof.position.set(4.8, 2.8, z);
+    // Road White Centerline Markings
+    const roadStripe = new THREE.Mesh(
+      new THREE.BoxGeometry(60, 0.09, 0.25),
+      createMaterial(0xf4f4f5)
+    );
+    roadStripe.position.set(2.65, 0.425, lcZ);
 
-    // Door and louvered vent
-    const hutDoor = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.8, 0.8), createMaterial(0x2a2a2a));
-    hutDoor.position.set(3.18, 1.0, z);
+    // Gatekeeper Cabin / Hut
+    const cabin = new THREE.Mesh(
+      new THREE.BoxGeometry(4.2, 3.2, 3.4),
+      createMaterial(0xfef08a) // Yellow cabin
+    );
+    cabin.position.set(-6.8, 2.0, lcZ - 8);
+    const cabinRoof = new THREE.Mesh(
+      new THREE.BoxGeometry(4.6, 0.35, 3.8),
+      createMaterial(0x991b1b) // Red roof
+    );
+    cabinRoof.position.set(-6.8, 3.75, lcZ - 8);
 
-    hut.add(hutBase, hutRoof, hutDoor);
-    sceneryGroup.add(hut);
+    // Level Crossing Boom Barriers (Red & White Striped Poles)
+    [-4.5, 9.8].forEach((bx, sideIdx) => {
+      const barrierPost = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 1.4, 8), createMaterial(0x18181b));
+      barrierPost.position.set(bx, 1.1, lcZ - 4.2);
+
+      const boom = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 8.5), createMaterial(0xdc2626)); // Red boom
+      boom.position.set(bx, 1.6, lcZ);
+      boom.rotation.x = Math.PI / 2;
+
+      // Central Red Stop Disc
+      const stopDisc = new THREE.Mesh(new THREE.CircleGeometry(0.35, 16), createMaterial(0xdc2626));
+      stopDisc.position.set(bx + (sideIdx === 0 ? 0.1 : -0.1), 1.6, lcZ);
+      stopDisc.rotation.y = sideIdx === 0 ? Math.PI / 2 : -Math.PI / 2;
+
+      lcGroup.add(barrierPost, boom, stopDisc);
+    });
+
+    // Parked Indian Auto-Rickshaws waiting at the closed level crossing!
+    [-18, 22].forEach(autoX => {
+      const autoRickshaw = new THREE.Group();
+      autoRickshaw.position.set(autoX, 0.45, lcZ + 2.2);
+
+      // Yellow & Green Body
+      const lowerBody = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.8, 2.6), createMaterial(0x15803d)); // Green CNG body
+      lowerBody.position.y = 0.55;
+      const upperCanopy = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.9, 2.2), createMaterial(0xfacc15)); // Yellow canopy
+      upperCanopy.position.set(0, 1.35, -0.1);
+      const autoWheel = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.14, 8), createMaterial(0x111111));
+      autoWheel.rotation.z = Math.PI / 2;
+      autoWheel.position.set(0, 0.25, 0);
+
+      autoRickshaw.add(lowerBody, upperCanopy, autoWheel);
+      lcGroup.add(autoRickshaw);
+    });
+
+    lcGroup.add(road, roadStripe, cabin, cabinRoof);
+    sceneryGroup.add(lcGroup);
   });
 
-  // Trackside Cess (gravel walkway beside ballast)
-  const cessGeo = new THREE.BoxGeometry(1.8, 0.05, trackLength);
-  const cessMat = createMaterial(0x948876);
-  const leftCess = new THREE.Mesh(cessGeo, cessMat);
-  leftCess.position.set(-2.8, 0.18, (startZ + endZ) / 2);
-  const rightCess = new THREE.Mesh(cessGeo, cessMat);
-  rightCess.position.set(2.8, 0.18, (startZ + endZ) / 2);
-  sceneryGroup.add(leftCess, rightCess);
+  // ==========================================
+  // 7. CROSSING INDIAN RAILWAYS FREIGHT TRAIN ON TRACK 2 (UP LINE)
+  // (Standing WAG-9 Electric Loco + 10 BTPN Petroleum Oil Tankers at Loni sidings)
+  // ==========================================
+  const freightGroup = new THREE.Group();
+  freightGroup.position.set(5.30, 0, 3100); // Placed on Track 2 beside Loni Oil Terminals
+
+  // WAG-9 Heavy Freight Locomotive (Emerald Green Livery #047857)
+  const wag9Body = new THREE.Mesh(
+    new THREE.BoxGeometry(3.2, 3.8, 20.5),
+    createMaterial(0x047857, { roughness: 0.5, metalness: 0.3 })
+  );
+  wag9Body.position.set(0, 2.9, 0);
+  wag9Body.castShadow = true;
+
+  // WAG-9 Yellow Warning Chevron Stripe
+  const wag9Stripe = new THREE.Mesh(
+    new THREE.BoxGeometry(3.22, 0.4, 20.6),
+    createMaterial(0xfacc15)
+  );
+  wag9Stripe.position.set(0, 2.7, 0);
+
+  // WAG-9 Roof equipment & pantograph
+  const wag9Roof = new THREE.Mesh(
+    new THREE.BoxGeometry(3.0, 0.4, 18.0),
+    createMaterial(0x71717a)
+  );
+  wag9Roof.position.set(0, 4.9, 0);
+  freightGroup.add(wag9Body, wag9Stripe, wag9Roof);
+
+  // 10 BTPN Cylindrical Petroleum Oil Tanker Wagons
+  const btpnTankMat = createMaterial(0x1c3829, { roughness: 0.45, metalness: 0.25 }); // Classic IR oil dark green
+  const btpnStripeMat = createMaterial(0xf59e0b); // Caution yellow hazmat band
+  const bogieMat = createMaterial(0x18181b);
+
+  for (let w = 0; w < 10; w++) {
+    const wagonZ = 22.0 + w * 14.5;
+    const wagon = new THREE.Group();
+    wagon.position.set(0, 0, wagonZ);
+
+    // Cylindrical Tanker Barrel
+    const tankMesh = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.4, 12.0, 16), btpnTankMat);
+    tankMesh.rotation.x = Math.PI / 2;
+    tankMesh.position.set(0, 2.6, 0);
+    tankMesh.castShadow = true;
+
+    // Dome Manhole on top
+    const domeMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.4, 10), btpnStripeMat);
+    domeMesh.position.set(0, 4.1, 0);
+
+    // Chassis Underframe
+    const chassis = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.35, 12.8), bogieMat);
+    chassis.position.set(0, 1.15, 0);
+
+    // CASNUB Bogies (Wheelsets)
+    [-4.2, 4.2].forEach(bz => {
+      const bogie = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.65, 2.2), bogieMat);
+      bogie.position.set(0, 0.65, bz);
+      wagon.add(bogie);
+    });
+
+    wagon.add(tankMesh, domeMesh, chassis);
+    freightGroup.add(wagon);
+  }
+  sceneryGroup.add(freightGroup);
+
+  // ==========================================
+  // 8. ROADSIDE URBAN TREES (NEEM & GULMOHAR)
+  // ==========================================
+  const treeCount = 180;
+  const treeTrunkMat = createMaterial(0x443729, { roughness: 0.9 });
+  const neemFoliageMat = createMaterial(0x2d6a2f, { roughness: 0.8 }); // Foliage base material
+
+  const treeTrunks = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.24, 0.36, 4.0, 6), treeTrunkMat, treeCount);
+  const treeCrowns = new THREE.InstancedMesh(new THREE.DodecahedronGeometry(2.8, 1), neemFoliageMat, treeCount);
+  treeTrunks.castShadow = true;
+  treeCrowns.castShadow = true;
+
+  for (let i = 0; i < treeCount; i++) {
+    const side = i % 2 === 0 ? -1 : 1;
+    const x = side === -1 ? -22 - rnd() * 45 : 24 + rnd() * 45;
+    const z = startZ + 60 + (i / treeCount) * (trackLength - 120);
+    const s = 0.75 + rnd() * 0.6;
+
+    dummy.position.set(x, 2.0 * s, z);
+    dummy.scale.set(s, s, s);
+    dummy.rotation.set(0, rnd() * Math.PI * 2, 0);
+    dummy.updateMatrix();
+    treeTrunks.setMatrixAt(i, dummy.matrix);
+
+    dummy.position.set(x, 5.0 * s, z);
+    dummy.updateMatrix();
+    treeCrowns.setMatrixAt(i, dummy.matrix);
+    treeCrowns.setColorAt(i, rnd() > 0.7 ? new THREE.Color(0xc2410c) : new THREE.Color(0x2d6a2f));
+  }
+
+  treeTrunks.instanceMatrix.needsUpdate = true;
+  treeCrowns.instanceMatrix.needsUpdate = true;
+  if (treeCrowns.instanceColor) treeCrowns.instanceColor.needsUpdate = true;
+  sceneryGroup.add(treeTrunks, treeCrowns);
 
   scene.add(sceneryGroup);
   return sceneryGroup;

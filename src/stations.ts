@@ -352,12 +352,14 @@ export function buildStations(ctx: RendererContext, stations: StationEntry[]): T
     const length = endZ - startZ;
     const centerZ = (startZ + endZ) / 2;
 
-    // Platform configurations:
-    // Platform 1 (Left): Center at X = -4.9m, inner edge at X = -1.9m
-    // Platform 2 (Right): Center at X = +4.9m, inner edge at X = +1.9m
+    // Platform configurations for Double Track:
+    // Track 1 (Down Line) at X = 0.0m
+    // Track 2 (Up Line) at X = 5.3m
+    // Platform 1 (Left of Track 1): Center at X = -4.9m, inner edge at X = -1.95m
+    // Platform 2 (Right of Track 2): Center at X = +10.25m, inner edge at X = +7.25m
     const platforms = [
-      { pfNum: 1, devPF: '१', posX: -4.9, edgeX: -1.95, canopyX: -5.4, pillarX: -3.2, boardX: -2.5, benchX: -4.5, facingRot: Math.PI / 2 },
-      { pfNum: 2, devPF: '२', posX: 4.9, edgeX: 1.95, canopyX: 5.4, pillarX: 3.2, boardX: 2.5, benchX: 4.5, facingRot: -Math.PI / 2 }
+      { pfNum: 1, devPF: '१', posX: -4.9, edgeX: -1.95, canopyX: -5.4, pillarX: -3.2, boardX: -2.5, benchX: -4.5, facingRot: Math.PI / 2, passengerMinX: -6.2, passengerMaxX: -2.6 },
+      { pfNum: 2, devPF: '२', posX: 10.25, edgeX: 7.25, canopyX: 10.75, pillarX: 8.6, boardX: 7.8, benchX: 9.8, facingRot: -Math.PI / 2, passengerMinX: 7.6, passengerMaxX: 11.8 }
     ];
 
     platforms.forEach(pf => {
@@ -502,9 +504,7 @@ export function buildStations(ctx: RendererContext, stations: StationEntry[]): T
 
       // Standing passengers waiting along the platform
       for (let i = 0; i < passengerCount; i++) {
-        const px = pf.pfNum === 1
-          ? -2.6 - rnd() * 3.8
-          : 2.6 + rnd() * 3.8;
+        const px = pf.passengerMinX + rnd() * (pf.passengerMaxX - pf.passengerMinX);
         const pz = startZ + 12 + rnd() * (length - 24);
 
         // Natural standing orientations (facing track, slightly angled, or in pairs)
@@ -530,44 +530,48 @@ export function buildStations(ctx: RendererContext, stations: StationEntry[]): T
     });
 
     // ==========================================
-    // FOOT OVER BRIDGE (FOB) SPANNING BOTH PLATFORMS ACROSS TRACKS
+    // FOOT OVER BRIDGE (FOB) SPANNING BOTH PLATFORMS ACROSS DOUBLE TRACKS
     // ==========================================
-    // Elevated deck spans from X = -8.5m (Platform 1) to X = +8.5m (Platform 2)
-    const fobDeck = new THREE.Mesh(new THREE.BoxGeometry(17.4, 0.35, 3.4), fobDeckMat);
-    fobDeck.position.set(0, 8.2, centerZ);
+    // Elevated deck spans from X = -8.2m (Platform 1) to X = +13.2m (Platform 2) across Track 1 & 2
+    const fobSpanLength = 22.0;
+    const fobCenterX = 2.5; // (-8.2 + 13.2)/2
+    const fobDeckY = 8.5;
+
+    const fobDeck = new THREE.Mesh(new THREE.BoxGeometry(fobSpanLength, 0.35, 3.4), fobDeckMat);
+    fobDeck.position.set(fobCenterX, fobDeckY, centerZ);
     fobDeck.castShadow = true;
     fobDeck.receiveShadow = true;
 
     // Safety handrails along both sides of FOB deck
     [-1.6, 1.6].forEach(dz => {
-      const rail = new THREE.Mesh(new THREE.BoxGeometry(17.4, 1.15, 0.08), fobDeckMat);
-      rail.position.set(0, 8.85, centerZ + dz);
+      const rail = new THREE.Mesh(new THREE.BoxGeometry(fobSpanLength, 1.15, 0.08), fobDeckMat);
+      rail.position.set(fobCenterX, fobDeckY + 0.65, centerZ + dz);
       rail.castShadow = true;
       stationGroup.add(rail);
     });
 
     // Elevated FOB Roof Canopy
-    const fobRoof = new THREE.Mesh(new THREE.BoxGeometry(17.8, 0.22, 3.8), fobRoofMat);
-    fobRoof.position.set(0, 10.0, centerZ);
+    const fobRoof = new THREE.Mesh(new THREE.BoxGeometry(fobSpanLength + 0.4, 0.22, 3.8), fobRoofMat);
+    fobRoof.position.set(fobCenterX, fobDeckY + 1.8, centerZ);
     fobRoof.castShadow = true;
     fobRoof.receiveShadow = true;
 
     // Staircase Towers connecting to Platform 1 & Platform 2
-    const stairTowerGeo = new THREE.BoxGeometry(2.6, 7.8, 3.0);
+    const stairTowerGeo = new THREE.BoxGeometry(2.6, 8.0, 3.0);
     const stairPf1 = new THREE.Mesh(stairTowerGeo, fobDeckMat);
-    stairPf1.position.set(-8.2, 4.4, centerZ);
+    stairPf1.position.set(-8.2, 4.5, centerZ);
     stairPf1.castShadow = true;
     stairPf1.receiveShadow = true;
 
     const stairPf2 = new THREE.Mesh(stairTowerGeo, fobDeckMat);
-    stairPf2.position.set(8.2, 4.4, centerZ);
+    stairPf2.position.set(13.2, 4.5, centerZ);
     stairPf2.castShadow = true;
     stairPf2.receiveShadow = true;
 
-    // Structural portal columns supporting the FOB span over the tracks
-    [-2.15, 2.15].forEach(x => {
-      const col = new THREE.Mesh(new THREE.BoxGeometry(0.32, 7.8, 0.32), pillarMat);
-      col.position.set(x, 4.35, centerZ);
+    // Structural portal columns supporting the FOB span
+    [-2.15, 7.45].forEach(x => {
+      const col = new THREE.Mesh(new THREE.BoxGeometry(0.35, 8.0, 0.35), pillarMat);
+      col.position.set(x, 4.5, centerZ);
       col.castShadow = true;
       col.receiveShadow = true;
       stationGroup.add(col);
