@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { SignalEntry, BoardEntry, SignalAspect } from './types';
 import { RendererContext } from './renderer';
+import { getTrackCurve } from './curve';
 
 export const SIGNAL_NAMES: Record<SignalAspect, string> = {
   DY: 'Double yellow',
@@ -35,16 +36,26 @@ export class SignalSystem {
 
     this.signals.forEach(sig => {
       const { z, aspect } = sig;
+      const pt = getTrackCurve(z);
+      const nx = Math.cos(pt.yaw);
+      const nz = -Math.sin(pt.yaw);
+
+      const sigX = pt.x + 3.3 * nx;
+      const sigZ = z + 3.3 * nz;
+
+      const sigGroup = new THREE.Group();
+      sigGroup.position.set(sigX, 0, sigZ);
+      sigGroup.rotation.y = pt.yaw;
 
       // Mast post
       const post = new THREE.Mesh(new THREE.BoxGeometry(0.16, 5, 0.16), postMat);
-      post.position.set(3.3, 2.5, z);
-      this.group.add(post);
+      post.position.set(0, 2.5, 0);
+      sigGroup.add(post);
 
       // Multi-aspect signal head hood/housing
       const housing = new THREE.Mesh(new THREE.BoxGeometry(0.7, 2.1, 0.4), housingMat);
-      housing.position.set(3.3, 5.3, z);
-      this.group.add(housing);
+      housing.position.set(0, 5.3, 0);
+      sigGroup.add(housing);
 
       // Aspects lenses (Double Yellow / Yellow / Green / Red)
       const isTopYellowOn = aspect === 'DY' || aspect === 'Y';
@@ -64,9 +75,11 @@ export class SignalSystem {
           color: isOn ? activeColor : 0x222222
         });
         const lens = new THREE.Mesh(lensGeo, lensMat);
-        lens.position.set(3.3, y, z - 0.2);
-        this.group.add(lens);
+        lens.position.set(0, y, -0.2);
+        sigGroup.add(lens);
       });
+
+      this.group.add(sigGroup);
     });
   }
 
@@ -78,11 +91,21 @@ export class SignalSystem {
 
     this.boards.forEach(b => {
       const { z, text, bg } = b;
+      const pt = getTrackCurve(z);
+      const nx = Math.cos(pt.yaw);
+      const nz = -Math.sin(pt.yaw);
+
+      const boardX = pt.x + 2.6 * nx;
+      const boardZ = z + 2.6 * nz;
+
+      const boardGroup = new THREE.Group();
+      boardGroup.position.set(boardX, 0, boardZ);
+      boardGroup.rotation.y = pt.yaw;
 
       // Post
       const post = new THREE.Mesh(postGeo, postMat);
-      post.position.set(2.6, 1.6, z);
-      this.group.add(post);
+      post.position.set(0, 1.6, 0);
+      boardGroup.add(post);
 
       // Sign plate texture (Indian Railways circular speed board / STOP board)
       const texture = createCanvasTexture(256, 256, (c, w, h) => {
@@ -109,8 +132,10 @@ export class SignalSystem {
         new THREE.MeshBasicMaterial({ map: texture, transparent: true })
       );
       boardMesh.rotation.y = Math.PI;
-      boardMesh.position.set(2.6, 3.5, z);
-      this.group.add(boardMesh);
+      boardMesh.position.set(0, 3.5, 0);
+      boardGroup.add(boardMesh);
+
+      this.group.add(boardGroup);
     });
   }
 

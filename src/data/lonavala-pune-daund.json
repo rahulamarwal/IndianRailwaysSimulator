@@ -1,0 +1,106 @@
+{
+  "id": "lonavala-pune-daund",
+  "name": "Lonavala to Pune & Daund Junction (Ghats Nature to Industrial Mainline)",
+  "startDistance": 240,
+  "stopTargetDistance": 8750,
+  "platformEndDistance": 8850,
+  "track": {
+    "startZ": -150,
+    "endZ": 9100,
+    "gauge": 1.676,
+    "sleeperSpacing": 0.65,
+    "mastSpacing": 60,
+    "contactWireY": 6.0,
+    "catenaryWireY": 6.7
+  },
+  "train": {
+    "massKg": 380000,
+    "coaches": 8,
+    "maxNotch": 8,
+    "maxPowerWatts": 6500000,
+    "maxStartingTractiveEffortN": 480000
+  },
+  "gradients": [
+    { "s": 0, "grade": -0.008 },
+    { "s": 1400, "grade": -0.004 },
+    { "s": 2300, "grade": 0.0 },
+    { "s": 3500, "grade": 0.002 },
+    { "s": 4500, "grade": 0.0 },
+    { "s": 5800, "grade": -0.003 },
+    { "s": 7000, "grade": 0.001 },
+    { "s": 8200, "grade": 0.0 }
+  ],
+  "speedLimits": [
+    { "s": 0, "limitKmh": 40 },
+    { "s": 350, "limitKmh": 100 },
+    { "s": 2200, "limitKmh": 60 },
+    { "s": 2750, "limitKmh": 80 },
+    { "s": 3600, "limitKmh": 30 },
+    { "s": 4250, "limitKmh": 110 },
+    { "s": 5000, "limitKmh": 130 },
+    { "s": 6200, "limitKmh": 75 },
+    { "s": 6700, "limitKmh": 130 },
+    { "s": 8200, "limitKmh": 40 },
+    { "s": 8600, "limitKmh": 15 }
+  ],
+  "signals": [
+    { "z": 320, "aspect": "G" },
+    { "z": 1200, "aspect": "G" },
+    { "z": 2100, "aspect": "DY" },
+    { "z": 2700, "aspect": "G" },
+    { "z": 3400, "aspect": "Y" },
+    { "z": 4250, "aspect": "G" },
+    { "z": 5200, "aspect": "G" },
+    { "z": 6100, "aspect": "DY" },
+    { "z": 6650, "aspect": "G" },
+    { "z": 7600, "aspect": "G" },
+    { "z": 8150, "aspect": "DY" },
+    { "z": 8500, "aspect": "Y" }
+  ],
+  "boards": [
+    { "z": 60, "text": "40", "bg": "#c62828" },
+    { "z": 350, "text": "100", "bg": "#c62828" },
+    { "z": 2200, "text": "60", "bg": "#c62828" },
+    { "z": 2750, "text": "80", "bg": "#c62828" },
+    { "z": 3600, "text": "30", "bg": "#c62828" },
+    { "z": 4250, "text": "110", "bg": "#c62828" },
+    { "z": 5000, "text": "130", "bg": "#c62828" },
+    { "z": 6200, "text": "75", "bg": "#c62828" },
+    { "z": 6700, "text": "130", "bg": "#c62828" },
+    { "z": 8200, "text": "40", "bg": "#c62828" },
+    { "z": 8600, "text": "15", "bg": "#c62828" },
+    { "z": 8750, "text": "STOP", "bg": "#111111" }
+  ],
+  "stations": [
+    {
+      "name": "LONAVALA",
+      "devanagari": "लोणावळा",
+      "startZ": 0,
+      "endZ": 280
+    },
+    {
+      "name": "SHIVAJI NAGAR",
+      "devanagari": "शिवाजीनगर",
+      "startZ": 2400,
+      "endZ": 2680
+    },
+    {
+      "name": "PUNE JN",
+      "devanagari": "पुणे जंक्शन",
+      "startZ": 3900,
+      "endZ": 4200
+    },
+    {
+      "name": "URULI",
+      "devanagari": "उरुळी कांचन",
+      "startZ": 6300,
+      "endZ": 6580
+    },
+    {
+      "name": "DAUND JN",
+      "devanagari": "दौंड जंक्शन",
+      "startZ": 8500,
+      "endZ": 8800
+    }
+  ]
+}

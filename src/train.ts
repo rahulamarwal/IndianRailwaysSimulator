@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { RendererContext } from './renderer';
 import { TrainConfig, TrainState, CameraMode } from './types';
+import { getTrackCurve } from './curve';
 
 export interface TrainAssembly {
   root: THREE.Group;
@@ -796,8 +797,19 @@ export function buildTrain(ctx: RendererContext, config: TrainConfig): TrainAsse
     loco,
     coaches,
     cabInterior,
-    setPositionZ: (z: number) => {
-      root.position.z = z;
+    setPositionZ: (s: number) => {
+      // 1. Locomotive root follows curve at its longitudinal center (s - 10)
+      const locoPt = getTrackCurve(s - 10);
+      loco.position.set(locoPt.x, 0, s - 10);
+      loco.rotation.set(0, locoPt.yaw, locoPt.cant);
+
+      // 2. Each passenger coach curves independently at its own center coordinate
+      for (let i = 0; i < coaches.length; i++) {
+        const cz = s - 32.5 - 24 * i;
+        const cPt = getTrackCurve(cz);
+        coaches[i].position.set(cPt.x, 0, cz);
+        coaches[i].rotation.set(0, cPt.yaw, cPt.cant);
+      }
     },
     setCameraMode: (mode: CameraMode) => {
       if (mode === CameraMode.TRACK) {

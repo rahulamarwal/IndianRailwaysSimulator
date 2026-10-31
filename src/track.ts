@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { TrackConfig } from './types';
 import { RendererContext } from './renderer';
+import { getTrackCurve } from './curve';
 
 export function buildTrack(ctx: RendererContext, config: TrackConfig): THREE.Group {
   const trackGroup = new THREE.Group();
@@ -58,85 +59,93 @@ export function buildTrack(ctx: RendererContext, config: TrackConfig): THREE.Gro
 
     // Helper to paint realistic locomotive oil & grease drip gradient along a track centerline
     const paintOilPath = (centerNormX: number, widthNorm: number) => {
-      const x0 = (centerNormX - widthNorm / 2) * w;
-      const x1 = (centerNormX + widthNorm / 2) * w;
-      const oilGrad = c.createLinearGradient(x0, 0, x1, 0);
-      oilGrad.addColorStop(0.0, 'rgba(25, 22, 18, 0)');
-      oilGrad.addColorStop(0.2, 'rgba(28, 24, 20, 0.55)');
-      oilGrad.addColorStop(0.5, 'rgba(18, 15, 12, 0.78)');
-      oilGrad.addColorStop(0.8, 'rgba(28, 24, 20, 0.55)');
-      oilGrad.addColorStop(1.0, 'rgba(25, 22, 18, 0)');
-      c.fillStyle = oilGrad;
-      c.fillRect(x0, 0, x1 - x0, h);
+      const cx = w * centerNormX;
+      const halfW = (w * widthNorm) / 2;
+      const dripGrad = c.createLinearGradient(cx - halfW, 0, cx + halfW, 0);
+      dripGrad.addColorStop(0.0, 'rgba(30, 22, 16, 0.0)');
+      dripGrad.addColorStop(0.3, 'rgba(24, 18, 12, 0.65)');
+      dripGrad.addColorStop(0.5, 'rgba(12, 10, 8, 0.95)');
+      dripGrad.addColorStop(0.7, 'rgba(24, 18, 12, 0.65)');
+      dripGrad.addColorStop(1.0, 'rgba(30, 22, 16, 0.0)');
+
+      c.fillStyle = dripGrad;
+      c.fillRect(cx - halfW, 0, halfW * 2, h);
+
+      // Dropped engine grease specks
+      for (let i = 0; i < 900; i++) {
+        const ox = cx + (Math.random() - 0.5) * halfW * 1.6;
+        const oy = Math.random() * h;
+        c.fillStyle = 'rgba(8, 6, 4, 0.7)';
+        c.beginPath();
+        c.arc(ox, oy, 1 + Math.random() * 2.5, 0, Math.PI * 2);
+        c.fill();
+      }
     };
 
-    // Oil path for Track 1 (left side of double ballast) & Track 2 (right side)
-    paintOilPath(0.28, 0.22);
-    paintOilPath(0.72, 0.22);
+    // Track 1 (x = 0) corresponds to ~28% across the 12.8m ballast top
+    // Track 2 (x = 5.30m) corresponds to ~72% across the ballast top
+    paintOilPath(0.29, 0.15);
+    paintOilPath(0.71, 0.15);
   });
   ballastTexture.wrapS = THREE.RepeatWrapping;
   ballastTexture.wrapT = THREE.RepeatWrapping;
-  ballastTexture.repeat.set(1, Math.floor(trackLength / 12));
+  ballastTexture.repeat.set(1, 160);
 
-  // B. Semi-Urban / Industrial Ground Soil & Trackside Berm Texture
+  // B. Terrain Ground Texture
   const groundTexture = createCanvasTexture(1024, 1024, (c, w, h) => {
-    // Semi-arid Deccan dry grass and murrum soil
-    c.fillStyle = '#6c7255';
+    c.fillStyle = '#6e624c';
     c.fillRect(0, 0, w, h);
 
-    // Industrial gravel and soil patches
-    for (let i = 0; i < 400; i++) {
+    // Dry Deccan soil with Maharashtra red clay tones
+    for (let i = 0; i < 30000; i++) {
       const x = Math.random() * w;
       const y = Math.random() * h;
-      const rad = 20 + Math.random() * 90;
-      const grad = c.createRadialGradient(x, y, 5, x, y, rad);
-      grad.addColorStop(0.0, 'rgba(128, 112, 88, 0.5)');
-      grad.addColorStop(1.0, 'rgba(108, 114, 85, 0)');
-      c.fillStyle = grad;
-      c.beginPath();
-      c.arc(x, y, rad, 0, Math.PI * 2);
-      c.fill();
+      const s = 2 + Math.random() * 6;
+      const r = 110 + Math.floor(Math.random() * 45);
+      const g = 95 + Math.floor(Math.random() * 35);
+      const b = 65 + Math.floor(Math.random() * 30);
+      c.fillStyle = `rgb(${r}, ${g}, ${b})`;
+      c.fillRect(x, y, s, s);
     }
 
-    // Organic granular speckle
-    for (let i = 0; i < 35000; i++) {
-      const x = Math.random() * w;
-      const y = Math.random() * h;
-      const dark = 40 + Math.floor(Math.random() * 45);
-      c.fillStyle = `rgba(${dark + 20}, ${dark + 30}, ${dark}, 0.3)`;
-      c.fillRect(x, y, 2, 2);
+    // Scrub patches
+    for (let i = 0; i < 350; i++) {
+      const cx = Math.random() * w;
+      const cy = Math.random() * h;
+      const rad = 8 + Math.random() * 22;
+      const grad = c.createRadialGradient(cx, cy, 2, cx, cy, rad);
+      grad.addColorStop(0, 'rgba(82, 92, 54, 0.55)');
+      grad.addColorStop(1, 'rgba(82, 92, 54, 0)');
+      c.fillStyle = grad;
+      c.beginPath();
+      c.arc(cx, cy, rad, 0, Math.PI * 2);
+      c.fill();
     }
   });
   groundTexture.wrapS = THREE.RepeatWrapping;
   groundTexture.wrapT = THREE.RepeatWrapping;
-  groundTexture.repeat.set(32, Math.floor(trackLength / 35));
+  groundTexture.repeat.set(12, 180);
 
-  // C. Monoblock Pre-Stressed Concrete (PSC) Sleeper Texture (RDSO-T2496)
+  // C. Concrete Sleeper Texture (RDSO Monoblock PSC Sleeper)
   const sleeperTexture = createCanvasTexture(256, 128, (c, w, h) => {
-    c.fillStyle = '#96928b';
+    c.fillStyle = '#a8a29a';
     c.fillRect(0, 0, w, h);
 
+    // Weathering pores
     for (let i = 0; i < 3000; i++) {
       const x = Math.random() * w;
       const y = Math.random() * h;
-      const v = 110 + Math.floor(Math.random() * 60);
-      c.fillStyle = `rgb(${v}, ${v - 3}, ${v - 8})`;
-      c.fillRect(x, y, 2, 2);
+      const val = 140 + Math.floor(Math.random() * 40);
+      c.fillStyle = `rgb(${val}, ${val - 5}, ${val - 10})`;
+      c.fillRect(x, y, 1.5, 1.5);
     }
 
-    // Grooved rubber rail seat pads at rail head seats
-    c.fillStyle = '#1e1e1e';
-    c.fillRect(w * 0.13, 0, w * 0.15, h);
-    c.fillRect(w * 0.72, 0, w * 0.15, h);
+    // Rail seat pads (ERC clip rubber grooved pad areas)
+    c.fillStyle = '#222222';
+    c.fillRect(36, 12, 34, h - 24);
+    c.fillRect(w - 70, 12, 34, h - 24);
 
-    // Red Pandrol ERC (Elastic Rail Clip) representations
-    c.fillStyle = '#c53030';
-    c.fillRect(w * 0.08, h * 0.15, w * 0.05, h * 0.7);
-    c.fillRect(w * 0.28, h * 0.15, w * 0.05, h * 0.7);
-    c.fillRect(w * 0.67, h * 0.15, w * 0.05, h * 0.7);
-    c.fillRect(w * 0.87, h * 0.15, w * 0.05, h * 0.7);
-
-    // RDSO identification markings embossed on concrete
+    // RDSO cast lettering imprint
     c.fillStyle = '#635f58';
     c.font = 'bold 14px Arial';
     c.textAlign = 'center';
@@ -148,7 +157,7 @@ export function buildTrack(ctx: RendererContext, config: TrackConfig): THREE.Gro
   // ==========================================
 
   // Wide ground plane
-  const groundGeo = new THREE.PlaneGeometry(1600, trackLength);
+  const groundGeo = new THREE.PlaneGeometry(1600, trackLength + 600);
   const groundMat = new THREE.MeshStandardMaterial({
     roughness: 0.95,
     metalness: 0.02,
@@ -160,25 +169,101 @@ export function buildTrack(ctx: RendererContext, config: TrackConfig): THREE.Gro
   ground.receiveShadow = true;
   trackGroup.add(ground);
 
-  // Ballast Sub-base Embankment (spans across both tracks, width 18m)
-  const subgradeGeo = new THREE.BoxGeometry(18, 0.12, trackLength);
-  const subgradeMat = createMaterial(0x6e6556, { roughness: 0.95 });
-  const subgrade = new THREE.Mesh(subgradeGeo, subgradeMat);
-  subgrade.position.set(doubleTrackCenterX, 0.06, centerZ);
-  subgrade.receiveShadow = true;
-  trackGroup.add(subgrade);
-
-  // Ballast Top Shoulder Prism (spans both Track 1 & Track 2, width 12.8m)
-  const ballastGeo = new THREE.BoxGeometry(12.8, 0.32, trackLength);
+  // Curved Ballast Prism: Strip following track curves smoothly
   const ballastMat = new THREE.MeshStandardMaterial({
     roughness: 0.92,
     metalness: 0.08,
     map: ballastTexture
   });
-  const ballast = new THREE.Mesh(ballastGeo, ballastMat);
-  ballast.position.set(doubleTrackCenterX, 0.22, centerZ);
-  ballast.receiveShadow = true;
-  trackGroup.add(ballast);
+  const subgradeMat = createMaterial(0x6e6556, { roughness: 0.95 });
+
+  const ballastStep = 6.0;
+  const ballastSlices = Math.ceil(trackLength / ballastStep);
+
+  const ballastPos: number[] = [];
+  const ballastUVs: number[] = [];
+  const ballastIndices: number[] = [];
+
+  const subgradePos: number[] = [];
+  const subgradeIndices: number[] = [];
+
+  for (let i = 0; i <= ballastSlices; i++) {
+    const z = Math.min(startZ + i * ballastStep, endZ);
+    const pt = getTrackCurve(z);
+    const cosY = Math.cos(pt.yaw);
+    const sinY = -Math.sin(pt.yaw); // normal x, z
+
+    // Center of double-track prism
+    const cx = pt.x + doubleTrackCenterX * cosY;
+    const cz = z + doubleTrackCenterX * sinY;
+
+    // Ballast shoulder profile (Top width 12.8m, Base width 15.5m)
+    // 4 points across: Base-Left, Top-Left, Top-Right, Base-Right
+    const hwTop = 6.4;
+    const hwBase = 7.75;
+    const yTop = 0.22;
+    const yBase = 0.06;
+
+    // 0: Base-Left
+    ballastPos.push(cx - hwBase * cosY, yBase, cz - hwBase * sinY);
+    ballastUVs.push(0.0, (z - startZ) / 12);
+
+    // 1: Top-Left
+    ballastPos.push(cx - hwTop * cosY, yTop, cz - hwTop * sinY);
+    ballastUVs.push(0.15, (z - startZ) / 12);
+
+    // 2: Top-Right
+    ballastPos.push(cx + hwTop * cosY, yTop, cz + hwTop * sinY);
+    ballastUVs.push(0.85, (z - startZ) / 12);
+
+    // 3: Base-Right
+    ballastPos.push(cx + hwBase * cosY, yBase, cz + hwBase * sinY);
+    ballastUVs.push(1.0, (z - startZ) / 12);
+
+    if (i < ballastSlices) {
+      const b = i * 4;
+      const nb = (i + 1) * 4;
+      // Left shoulder
+      ballastIndices.push(b + 0, b + 1, nb + 1);
+      ballastIndices.push(b + 0, nb + 1, nb + 0);
+      // Top prism
+      ballastIndices.push(b + 1, b + 2, nb + 2);
+      ballastIndices.push(b + 1, nb + 2, nb + 1);
+      // Right shoulder
+      ballastIndices.push(b + 2, b + 3, nb + 3);
+      ballastIndices.push(b + 2, nb + 3, nb + 2);
+    }
+
+    // Subgrade embankment base (width 18m)
+    const hwSub = 9.0;
+    subgradePos.push(cx - hwSub * cosY, 0.06, cz - hwSub * sinY);
+    subgradePos.push(cx + hwSub * cosY, 0.06, cz + hwSub * sinY);
+
+    if (i < ballastSlices) {
+      const sb = i * 2;
+      const snb = (i + 1) * 2;
+      subgradeIndices.push(sb + 0, sb + 1, snb + 1);
+      subgradeIndices.push(sb + 0, snb + 1, snb + 0);
+    }
+  }
+
+  const ballastGeo = new THREE.BufferGeometry();
+  ballastGeo.setAttribute('position', new THREE.Float32BufferAttribute(ballastPos, 3));
+  ballastGeo.setAttribute('uv', new THREE.Float32BufferAttribute(ballastUVs, 2));
+  ballastGeo.setIndex(ballastIndices);
+  ballastGeo.computeVertexNormals();
+
+  const ballastMesh = new THREE.Mesh(ballastGeo, ballastMat);
+  ballastMesh.receiveShadow = true;
+  trackGroup.add(ballastMesh);
+
+  const subgradeGeo = new THREE.BufferGeometry();
+  subgradeGeo.setAttribute('position', new THREE.Float32BufferAttribute(subgradePos, 3));
+  subgradeGeo.setIndex(subgradeIndices);
+  subgradeGeo.computeVertexNormals();
+  const subgradeMesh = new THREE.Mesh(subgradeGeo, subgradeMat);
+  subgradeMesh.receiveShadow = true;
+  trackGroup.add(subgradeMesh);
 
   // ==========================================
   // 3. BROAD GAUGE RAILS (TRACK 1 & TRACK 2)
@@ -190,28 +275,94 @@ export function buildTrack(ctx: RendererContext, config: TrackConfig): THREE.Gro
   });
   const railWebMat = createMaterial(0x524337, { metalness: 0.65, roughness: 0.6 });
 
-  const buildRail = (xPos: number) => {
-    // Rail Head (UIC 60)
-    const head = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.05, trackLength), railHeadMat);
-    head.position.set(xPos, 0.54, centerZ);
-    head.castShadow = true;
-    head.receiveShadow = true;
-    trackGroup.add(head);
+  // Function to build a continuous curved rail ribbon with head and web
+  const buildCurvedRail = (railOffsetNormal: number) => {
+    const step = 3.0; // 3m interval for smooth track curves
+    const steps = Math.ceil(trackLength / step);
+    const hw = 0.04; // half head width 80mm
+    const headHeight = 0.05;
+    const topY = 0.54;
+    const webW = 0.06;
+    const bottomY = 0.38;
 
-    // Rail Web & Base Flange
-    const web = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.13, trackLength), railWebMat);
-    web.position.set(xPos, 0.45, centerZ);
-    web.castShadow = true;
-    trackGroup.add(web);
+    const headPos: number[] = [];
+    const headIndices: number[] = [];
+
+    const webPos: number[] = [];
+    const webIndices: number[] = [];
+
+    for (let i = 0; i <= steps; i++) {
+      const z = Math.min(startZ + i * step, endZ);
+      const pt = getTrackCurve(z);
+      const nx = Math.cos(pt.yaw);
+      const nz = -Math.sin(pt.yaw);
+
+      // Centerline of this rail in world coordinates
+      const cx = pt.x + railOffsetNormal * nx;
+      const cz = z + railOffsetNormal * nz;
+      const cy = topY + railOffsetNormal * Math.sin(pt.cant);
+
+      // Head: 4 vertices (Top-Left, Top-Right, Bottom-Right, Bottom-Left)
+      headPos.push(cx - hw * nx, cy, cz - hw * nz);
+      headPos.push(cx + hw * nx, cy, cz + hw * nz);
+      headPos.push(cx + hw * nx, cy - headHeight, cz + hw * nz);
+      headPos.push(cx - hw * nx, cy - headHeight, cz - hw * nz);
+
+      if (i < steps) {
+        const b = i * 4;
+        const nb = (i + 1) * 4;
+        // Top shiny face
+        headIndices.push(b + 0, b + 1, nb + 1);
+        headIndices.push(b + 0, nb + 1, nb + 0);
+        // Right side
+        headIndices.push(b + 1, b + 2, nb + 2);
+        headIndices.push(b + 1, nb + 2, nb + 1);
+        // Left side
+        headIndices.push(b + 3, b + 0, nb + 0);
+        headIndices.push(b + 3, nb + 0, nb + 3);
+      }
+
+      // Web: 4 vertices
+      webPos.push(cx - webW * nx, cy - headHeight, cz - webW * nz);
+      webPos.push(cx + webW * nx, cy - headHeight, cz + webW * nz);
+      webPos.push(cx + webW * nx, bottomY, cz + webW * nz);
+      webPos.push(cx - webW * nx, bottomY, cz - webW * nz);
+
+      if (i < steps) {
+        const b = i * 4;
+        const nb = (i + 1) * 4;
+        webIndices.push(b + 1, b + 2, nb + 2);
+        webIndices.push(b + 1, nb + 2, nb + 1);
+        webIndices.push(b + 3, b + 0, nb + 0);
+        webIndices.push(b + 3, nb + 0, nb + 3);
+      }
+    }
+
+    const hGeo = new THREE.BufferGeometry();
+    hGeo.setAttribute('position', new THREE.Float32BufferAttribute(headPos, 3));
+    hGeo.setIndex(headIndices);
+    hGeo.computeVertexNormals();
+    const hMesh = new THREE.Mesh(hGeo, railHeadMat);
+    hMesh.castShadow = true;
+    hMesh.receiveShadow = true;
+
+    const wGeo = new THREE.BufferGeometry();
+    wGeo.setAttribute('position', new THREE.Float32BufferAttribute(webPos, 3));
+    wGeo.setIndex(webIndices);
+    wGeo.computeVertexNormals();
+    const wMesh = new THREE.Mesh(wGeo, railWebMat);
+    wMesh.castShadow = true;
+
+    trackGroup.add(hMesh, wMesh);
   };
 
-  // Track 1 (Down Line): x = ±0.838m
-  buildRail(track1X - halfGauge);
-  buildRail(track1X + halfGauge);
+  // Track 1 (Down Line): -0.838m, +0.838m
+  buildCurvedRail(track1X - halfGauge);
+  buildCurvedRail(track1X + halfGauge);
 
-  // Track 2 (Up Line): x = 5.30 ± 0.838m
-  buildRail(track2X - halfGauge);
-  buildRail(track2X + halfGauge);
+  // Track 2 (Up Line): 5.30 - 0.838m, 5.30 + 0.838m
+  buildCurvedRail(track2X - halfGauge);
+  buildCurvedRail(track2X + halfGauge);
 
   // ==========================================
   // 4. INSTANCED PSC SLEEPERS (TRACK 1 & TRACK 2)
@@ -233,16 +384,20 @@ export function buildTrack(ctx: RendererContext, config: TrackConfig): THREE.Gro
 
   for (let i = 0; i < sleepersPerTrack; i++) {
     const z = startZ + i * sleeperSpacing;
+    const pt = getTrackCurve(z);
+    const nx = Math.cos(pt.yaw);
+    const nz = -Math.sin(pt.yaw);
 
     // Track 1 Sleeper (Down Line)
-    dummy.position.set(track1X, 0.37, z);
+    dummy.position.set(pt.x + track1X * nx, 0.37, z + track1X * nz);
+    dummy.rotation.set(0, pt.yaw, pt.cant);
     dummy.scale.set(1, 1, 1);
-    dummy.rotation.set(0, 0, 0);
     dummy.updateMatrix();
     sleeperInstanced.setMatrixAt(slpIdx++, dummy.matrix);
 
     // Track 2 Sleeper (Up Line)
-    dummy.position.set(track2X, 0.37, z);
+    dummy.position.set(pt.x + track2X * nx, 0.37, z + track2X * nz);
+    dummy.rotation.set(0, pt.yaw, pt.cant);
     dummy.updateMatrix();
     sleeperInstanced.setMatrixAt(slpIdx++, dummy.matrix);
   }
@@ -280,16 +435,11 @@ export function buildTrack(ctx: RendererContext, config: TrackConfig): THREE.Gro
   });
   const dangerPlateMat = new THREE.MeshBasicMaterial({ map: dangerPlateTex });
 
-  // Double-track portal gantry components:
-  // Two vertical columns: Left at x = -3.2m, Right at x = +8.5m
-  // Spanning horizontal lattice truss boom: length = 11.7m at y = 7.6m
   const portalColumns = new THREE.InstancedMesh(new THREE.BoxGeometry(0.28, 7.8, 0.28), galvSteelMat, mastCount * 2);
   const portalFoundations = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.38, 0.42, 0.85, 12), concreteFoundationMat, mastCount * 2);
   const portalBooms = new THREE.InstancedMesh(new THREE.BoxGeometry(12.0, 0.40, 0.32), galvSteelMat, mastCount);
   const dangerPlates = new THREE.InstancedMesh(new THREE.PlaneGeometry(0.42, 0.22), dangerPlateMat, mastCount * 2);
 
-  // Dropper cantilevers suspended from the portal boom over both tracks
-  // 2 sets of cantilevers per gantry (Track 1 & Track 2)
   const bracketTubes = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.032, 0.032, 1.8, 8), galvSteelMat, mastCount * 2);
   const registerArms = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.022, 0.022, 1.1, 8), galvSteelMat, mastCount * 2);
   const insulatorsMesh = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.075, 0.075, 0.48, 10), oheInsulatorMat, mastCount * 4);
@@ -308,24 +458,30 @@ export function buildTrack(ctx: RendererContext, config: TrackConfig): THREE.Gro
 
   for (let i = 0; i < mastCount; i++) {
     const z = startZ + i * mastSpacing;
+    const pt = getTrackCurve(z);
+    const nx = Math.cos(pt.yaw);
+    const nz = -Math.sin(pt.yaw);
 
     // 1. Left & Right Vertical Columns & Foundations
-    [leftColX, rightColX].forEach((colX, side) => {
+    [leftColX, rightColX].forEach((colOffset, side) => {
+      const cx = pt.x + colOffset * nx;
+      const cz = z + colOffset * nz;
+
       // Foundation
-      dummy.position.set(colX, 0.40, z);
+      dummy.position.set(cx, 0.40, cz);
       dummy.scale.set(1, 1, 1);
-      dummy.rotation.set(0, 0, 0);
+      dummy.rotation.set(0, pt.yaw, 0);
       dummy.updateMatrix();
       portalFoundations.setMatrixAt(colIdx, dummy.matrix);
 
       // Steel Column
-      dummy.position.set(colX, 4.30, z);
+      dummy.position.set(cx, 4.30, cz);
       dummy.updateMatrix();
       portalColumns.setMatrixAt(colIdx, dummy.matrix);
 
       // Danger Plate
-      dummy.position.set(colX + (side === 0 ? 0.15 : -0.15), 2.4, z);
-      dummy.rotation.set(0, side === 0 ? Math.PI / 2 : -Math.PI / 2, 0);
+      dummy.position.set(cx + (side === 0 ? 0.15 : -0.15) * nx, 2.4, cz + (side === 0 ? 0.15 : -0.15) * nz);
+      dummy.rotation.set(0, pt.yaw + (side === 0 ? Math.PI / 2 : -Math.PI / 2), 0);
       dummy.updateMatrix();
       dangerPlates.setMatrixAt(colIdx, dummy.matrix);
 
@@ -333,33 +489,38 @@ export function buildTrack(ctx: RendererContext, config: TrackConfig): THREE.Gro
     });
 
     // 2. Horizontal Portal Lattice Truss Boom across both tracks
-    dummy.position.set(boomCenterX, 7.8, z);
-    dummy.rotation.set(0, 0, 0);
+    const bx = pt.x + boomCenterX * nx;
+    const bz = z + boomCenterX * nz;
+    dummy.position.set(bx, 7.8, bz);
+    dummy.rotation.set(0, pt.yaw, 0);
     dummy.updateMatrix();
     portalBooms.setMatrixAt(i, dummy.matrix);
 
     // 3. Cantilevers for Track 1 (x = 0) and Track 2 (x = 5.30)
     [track1X, track2X].forEach(tx => {
+      const kx = pt.x + tx * nx;
+      const kz = z + tx * nz;
+
       // Top Insulator (vertical standoff beneath boom)
-      dummy.position.set(tx, 7.45, z);
-      dummy.rotation.set(0, 0, 0);
+      dummy.position.set(kx, 7.45, kz);
+      dummy.rotation.set(0, pt.yaw, 0);
       dummy.updateMatrix();
       insulatorsMesh.setMatrixAt(insIdx++, dummy.matrix);
 
       // Main Vertical Drop Bracket Tube
-      dummy.position.set(tx, 6.70, z);
-      dummy.rotation.set(0, 0, 0);
+      dummy.position.set(kx, 6.70, kz);
+      dummy.rotation.set(0, pt.yaw, 0);
       dummy.updateMatrix();
       bracketTubes.setMatrixAt(cantIdx, dummy.matrix);
 
       // Bottom Insulator & Register Arm to contact wire (Y = 6.0m)
-      dummy.position.set(tx, 6.25, z);
-      dummy.rotation.set(0, 0, Math.PI / 2);
+      dummy.position.set(kx, 6.25, kz);
+      dummy.rotation.set(0, pt.yaw, Math.PI / 2);
       dummy.updateMatrix();
       insulatorsMesh.setMatrixAt(insIdx++, dummy.matrix);
 
-      dummy.position.set(tx + 0.12, 6.12, z);
-      dummy.rotation.set(0, 0, -0.45);
+      dummy.position.set(kx + 0.12 * nx, 6.12, kz + 0.12 * nz);
+      dummy.rotation.set(0, pt.yaw, -0.45);
       dummy.updateMatrix();
       registerArms.setMatrixAt(cantIdx, dummy.matrix);
 
@@ -391,36 +552,50 @@ export function buildTrack(ctx: RendererContext, config: TrackConfig): THREE.Gro
   const wireMatCatenary = new THREE.LineBasicMaterial({ color: 0x5a554e, linewidth: 2 });
   const wireMatContact = new THREE.LineBasicMaterial({ color: 0x2e2925, linewidth: 2 });
 
-  // Track 1 Wires (Down Line)
-  const catGeo1 = new THREE.BufferGeometry().setFromPoints([
-    new THREE.Vector3(track1X, catenaryWireY, startZ),
-    new THREE.Vector3(track1X, catenaryWireY, endZ)
-  ]);
-  const conGeo1 = new THREE.BufferGeometry().setFromPoints([
-    new THREE.Vector3(track1X, contactWireY, startZ),
-    new THREE.Vector3(track1X, contactWireY, endZ)
-  ]);
-  trackGroup.add(new THREE.Line(catGeo1, wireMatCatenary), new THREE.Line(conGeo1, wireMatContact));
+  const wireStep = 4.0;
+  const wireSlices = Math.ceil(trackLength / wireStep);
 
-  // Track 2 Wires (Up Line)
-  const catGeo2 = new THREE.BufferGeometry().setFromPoints([
-    new THREE.Vector3(track2X, catenaryWireY, startZ),
-    new THREE.Vector3(track2X, catenaryWireY, endZ)
-  ]);
-  const conGeo2 = new THREE.BufferGeometry().setFromPoints([
-    new THREE.Vector3(track2X, contactWireY, startZ),
-    new THREE.Vector3(track2X, contactWireY, endZ)
-  ]);
-  trackGroup.add(new THREE.Line(catGeo2, wireMatCatenary), new THREE.Line(conGeo2, wireMatContact));
+  const catPts1: THREE.Vector3[] = [];
+  const conPts1: THREE.Vector3[] = [];
+  const catPts2: THREE.Vector3[] = [];
+  const conPts2: THREE.Vector3[] = [];
+  const feederPts: THREE.Vector3[] = [];
 
-  // Top Aerial Feeder Wire (along outer portal mast tops)
-  const feederGeo = new THREE.BufferGeometry().setFromPoints([
-    new THREE.Vector3(leftColX, 8.3, startZ),
-    new THREE.Vector3(leftColX, 8.3, endZ),
-    new THREE.Vector3(rightColX, 8.3, startZ),
-    new THREE.Vector3(rightColX, 8.3, endZ)
-  ]);
-  trackGroup.add(new THREE.LineSegments(feederGeo, new THREE.LineBasicMaterial({ color: 0x6e757c })));
+  for (let i = 0; i <= wireSlices; i++) {
+    const z = Math.min(startZ + i * wireStep, endZ);
+    const pt = getTrackCurve(z);
+    const nx = Math.cos(pt.yaw);
+    const nz = -Math.sin(pt.yaw);
+
+    // Track 1
+    const t1x = pt.x + track1X * nx;
+    const t1z = z + track1X * nz;
+    catPts1.push(new THREE.Vector3(t1x, catenaryWireY, t1z));
+    conPts1.push(new THREE.Vector3(t1x, contactWireY, t1z));
+
+    // Track 2
+    const t2x = pt.x + track2X * nx;
+    const t2z = z + track2X * nz;
+    catPts2.push(new THREE.Vector3(t2x, catenaryWireY, t2z));
+    conPts2.push(new THREE.Vector3(t2x, contactWireY, t2z));
+
+    // Feeder along outer masts
+    const f1x = pt.x + leftColX * nx;
+    const f1z = z + leftColX * nz;
+    const f2x = pt.x + rightColX * nx;
+    const f2z = z + rightColX * nz;
+    if (i % 2 === 0) {
+      feederPts.push(new THREE.Vector3(f1x, 8.3, f1z));
+      feederPts.push(new THREE.Vector3(f2x, 8.3, f2z));
+    }
+  }
+
+  trackGroup.add(
+    new THREE.Line(new THREE.BufferGeometry().setFromPoints(catPts1), wireMatCatenary),
+    new THREE.Line(new THREE.BufferGeometry().setFromPoints(conPts1), wireMatContact),
+    new THREE.Line(new THREE.BufferGeometry().setFromPoints(catPts2), wireMatCatenary),
+    new THREE.Line(new THREE.BufferGeometry().setFromPoints(conPts2), wireMatContact)
+  );
 
   // Vertical Droppers every 8.0 meters over BOTH tracks
   const dropperSpacing = 8.0;
@@ -429,12 +604,19 @@ export function buildTrack(ctx: RendererContext, config: TrackConfig): THREE.Gro
 
   for (let i = 0; i < dropperCount; i++) {
     const z = startZ + i * dropperSpacing;
-    // Track 1 dropper
-    dropperPoints.push(new THREE.Vector3(track1X, catenaryWireY, z));
-    dropperPoints.push(new THREE.Vector3(track1X, contactWireY, z));
-    // Track 2 dropper
-    dropperPoints.push(new THREE.Vector3(track2X, catenaryWireY, z));
-    dropperPoints.push(new THREE.Vector3(track2X, contactWireY, z));
+    const pt = getTrackCurve(z);
+    const nx = Math.cos(pt.yaw);
+    const nz = -Math.sin(pt.yaw);
+
+    const t1x = pt.x + track1X * nx;
+    const t1z = z + track1X * nz;
+    dropperPoints.push(new THREE.Vector3(t1x, catenaryWireY, t1z));
+    dropperPoints.push(new THREE.Vector3(t1x, contactWireY, t1z));
+
+    const t2x = pt.x + track2X * nx;
+    const t2z = z + track2X * nz;
+    dropperPoints.push(new THREE.Vector3(t2x, catenaryWireY, t2z));
+    dropperPoints.push(new THREE.Vector3(t2x, contactWireY, t2z));
   }
 
   const dropperGeo = new THREE.BufferGeometry().setFromPoints(dropperPoints);
@@ -444,11 +626,16 @@ export function buildTrack(ctx: RendererContext, config: TrackConfig): THREE.Gro
   // ==========================================
   // 7. AUTO-TENSIONING DEVICES (ATD PULLEY COUNTERWEIGHTS)
   // ==========================================
-  const atdLocations = [600, 1800, 3000, 4200, 5400];
+  const atdLocations = [600, 1800, 3000, 4200, 5400, 6800, 8000];
   atdLocations.forEach(z => {
-    [-3.5, 8.8].forEach(atdX => {
+    const pt = getTrackCurve(z);
+    const nx = Math.cos(pt.yaw);
+    const nz = -Math.sin(pt.yaw);
+
+    [-3.5, 8.8].forEach(atdOffset => {
       const atdGroup = new THREE.Group();
-      atdGroup.position.set(atdX, 0, z);
+      atdGroup.position.set(pt.x + atdOffset * nx, 0, z + atdOffset * nz);
+      atdGroup.rotation.y = pt.yaw;
 
       const guideRods = new THREE.Mesh(new THREE.BoxGeometry(0.45, 5.2, 0.45), galvSteelMat);
       guideRods.position.set(0, 3.2, 0);

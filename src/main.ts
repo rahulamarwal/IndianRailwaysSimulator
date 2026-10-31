@@ -8,7 +8,8 @@ import { buildTrain } from './train';
 import { AudioController } from './audio';
 import { HUD } from './hud';
 import { CameraMode, RouteData } from './types';
-import routeDataJson from './data/pune-daund.json';
+import { getTrackCurve } from './curve';
+import routeDataJson from './data/lonavala-pune-daund.json';
 
 const route: RouteData = routeDataJson as RouteData;
 
@@ -37,16 +38,49 @@ function applyCamera(s: number, v: number): void {
 
   if (cameraMode === CameraMode.TRACK) {
     // POV 1: Clean forward track driver view (unobstructed windscreen with 2D vignette)
-    camera.position.set(0.55, 3.95 + headBob, s - 2.2);
-    camera.lookAt(0.2, 3.6, s + 60);
+    const wsZ = s - 2.2;
+    const pt = getTrackCurve(wsZ);
+    const nx = Math.cos(pt.yaw);
+    const nz = -Math.sin(pt.yaw);
+
+    const camX = pt.x + 0.55 * nx;
+    const camZ = wsZ + 0.55 * nz;
+    camera.position.set(camX, 3.95 + headBob, camZ);
+
+    const lookAheadZ = s + 65;
+    const ptLook = getTrackCurve(lookAheadZ);
+    camera.lookAt(ptLook.x + 0.2, 3.6, lookAheadZ);
   } else if (cameraMode === CameraMode.CHASE) {
-    // POV 2: Cinematic exterior chase view
-    camera.position.set(-13, 7, s - 75);
-    camera.lookAt(0, 2.5, s - 30);
+    // POV 2: Cinematic exterior chase view tracking behind the curving train
+    const chaseZ = s - 75;
+    const ptChase = getTrackCurve(chaseZ);
+    const ptLoco = getTrackCurve(s - 10);
+    const nx = Math.cos(ptChase.yaw);
+    const nz = -Math.sin(ptChase.yaw);
+
+    const camX = ptChase.x - 13.0 * nx;
+    const camZ = chaseZ - 13.0 * nz;
+    camera.position.set(camX, 7.0, camZ);
+    camera.lookAt(ptLoco.x, 2.5, s - 30);
   } else {
-    // POV 3: 3D interactive cab cockpit view (dashboard, dials, DDU, and levers)
-    camera.position.set(-0.72, 3.70 + headBob, s - 10 + 7.85);
-    camera.lookAt(-0.72, 3.44, s + 35);
+    // POV 3: 3D interactive cab cockpit view following locomotive heading and banking
+    const ptLoco = getTrackCurve(s - 10);
+    const cosY = Math.cos(ptLoco.yaw);
+    const sinY = Math.sin(ptLoco.yaw);
+
+    const localX = -0.72;
+    const localZ = 7.85;
+
+    const worldX = ptLoco.x + localX * cosY + localZ * sinY;
+    const worldZ = (s - 10) - localX * sinY + localZ * cosY;
+    const worldY = 3.70 + headBob - localX * Math.sin(ptLoco.cant);
+    camera.position.set(worldX, worldY, worldZ);
+
+    const lookDist = 40;
+    const lookLocalZ = localZ + lookDist;
+    const lookX = ptLoco.x + localX * cosY + lookLocalZ * sinY;
+    const lookZ = (s - 10) - localX * sinY + lookLocalZ * cosY;
+    camera.lookAt(lookX, 3.44, lookZ);
   }
 
   trainAssembly.setCameraMode(cameraMode);
@@ -129,7 +163,7 @@ function animate(now: number): void {
   const { s, v } = physics.state;
   const absSpeedKmh = Math.abs(v) * 3.6;
 
-  // Sync 3D train position
+  // Sync 3D train position along track curves
   trainAssembly.setPositionZ(s);
 
   // Sync Camera
@@ -144,10 +178,10 @@ function animate(now: number): void {
   // Audio update
   audio.update(Math.abs(v));
 
-  // HUD update
+  // HUD and Mini-Map update
   const currentLimit = physics.getSpeedLimitKmh(s);
   const currentGrade = physics.getGrade(s);
-  hud.update(physics.state, currentLimit, currentGrade, signalSystem, route.stopTargetDistance);
+  hud.update(physics.state, currentLimit, currentGrade, signalSystem, route.stopTargetDistance, route.stations, route.track.endZ);
 
   // Render Frame
   ctx.renderer.render(ctx.scene, ctx.camera);
