@@ -14,6 +14,9 @@ export class HUD {
   private tmEl: HTMLElement;
   private msgEl: HTMLElement;
   private cabVignetteEl: HTMLElement;
+  private eqEl: HTMLElement;
+  private vcdAlertEl: HTMLElement;
+  private whistleEl: HTMLElement;
 
   // Mini-Map Elements
   private mapCanvas: HTMLCanvasElement | null;
@@ -32,6 +35,9 @@ export class HUD {
     this.tmEl = document.getElementById('tm')!;
     this.msgEl = document.getElementById('msg')!;
     this.cabVignetteEl = document.getElementById('cab')!;
+    this.eqEl = document.getElementById('eq')!;
+    this.vcdAlertEl = document.getElementById('vcd-alert')!;
+    this.whistleEl = document.getElementById('whistle-prompt')!;
 
     this.mapCanvas = document.getElementById('map-canvas') as HTMLCanvasElement;
     this.mapCtx = this.mapCanvas ? this.mapCanvas.getContext('2d') : null;
@@ -262,12 +268,52 @@ export class HUD {
     this.ntEl.textContent = `Throttle notch ${state.n} of 8`;
 
     const bPct = Math.round(state.b * 100);
-    if (state.em) {
-      this.brEl.innerHTML = `Brake: <b style="color: #ef4444">EMERGENCY (100%)</b>`;
+    if (state.vcdPenalty) {
+      this.brEl.innerHTML = `Brake: <b style="color: #ef4444">VCD PENALTY EMERGENCY (BP: ${state.bpPressure.toFixed(2)} kg/cm²)</b>`;
+    } else if (state.em) {
+      this.brEl.innerHTML = `Brake: <b style="color: #ef4444">EMERGENCY (BP: ${state.bpPressure.toFixed(2)} kg/cm²)</b>`;
     } else if (bPct > 0 || state.bc > 0) {
-      this.brEl.innerHTML = `Brake: <b style="color: ${bPct > 60 ? '#ef4444' : '#f59e0b'}">${bPct}%</b> (Q to Apply, E to Release)`;
+      this.brEl.innerHTML = `Brake: <b style="color: ${bPct > 60 ? '#ef4444' : '#f59e0b'}">${bPct}%</b> &bull; BP: <b>${state.bpPressure.toFixed(2)}</b> &bull; BC: <b>${state.bcPressure.toFixed(2)}</b> kg/cm²`;
     } else {
-      this.brEl.innerHTML = `Brake: Released (0%)`;
+      this.brEl.innerHTML = `Brake: Released (0%) &bull; BP: <b>${state.bpPressure.toFixed(2)}</b> kg/cm²`;
+    }
+
+    // Equipment & Safety status line
+    const vcdText = state.vcdPenalty
+      ? '<span style="color: #ef4444; font-weight: 700;">PENALTY</span>'
+      : state.vcdVisual || state.vcdAudio
+      ? '<span style="color: #facc15; font-weight: 700;">ALERT</span>'
+      : '<span style="color: #4ade80;">Normal</span>';
+
+    const lightText = state.headlights ? '<span style="color: #facc15;">ON</span>' : 'OFF';
+    const wiperText = state.wipers ? '<span style="color: #38bdf8;">ON</span>' : 'OFF';
+    this.eqEl.innerHTML = `Headlights: <b>${lightText}</b> [L] &bull; Wipers: <b>${wiperText}</b> [X] &bull; VCD: <b>${vcdText}</b> [V]`;
+
+    // Dynamic VCD Alert Banner
+    if (state.vcdPenalty) {
+      this.vcdAlertEl.style.display = 'block';
+      this.vcdAlertEl.style.background = 'rgba(185, 28, 28, 0.95)';
+      this.vcdAlertEl.innerHTML = '🚨 VCD PENALTY EMERGENCY BRAKE APPLIED &bull; PRESS <b>[V]</b> TO RESET';
+    } else if (state.vcdAudio) {
+      this.vcdAlertEl.style.display = 'block';
+      this.vcdAlertEl.style.background = 'rgba(220, 38, 38, 0.95)';
+      this.vcdAlertEl.innerHTML = '🚨 VCD VIGILANCE ALARM BUZZER &bull; PRESS <b>[V]</b> TO ACKNOWLEDGE';
+    } else if (state.vcdVisual) {
+      this.vcdAlertEl.style.display = 'block';
+      this.vcdAlertEl.style.background = 'rgba(217, 119, 6, 0.95)';
+      this.vcdAlertEl.innerHTML = '⚠️ VCD VIGILANCE LAMP ACTIVE &bull; PRESS <b>[V]</b> TO ACKNOWLEDGE PEDAL';
+    } else {
+      this.vcdAlertEl.style.display = 'none';
+    }
+
+    // Whistle Board Prompt
+    const whistle = signals.getApproachingWhistleBoard(state.s);
+    if (whistle) {
+      this.whistleEl.style.display = 'block';
+      const boardLabel = whistle.text === 'W/L' ? 'W/L (सी/फा - फाटक)' : 'W (सी - सीटी)';
+      this.whistleEl.innerHTML = `📯 WHISTLE BOARD <b>${boardLabel}</b> IN ${whistle.distanceMeters} m &bull; SOUND HORN <b>[H]</b>`;
+    } else {
+      this.whistleEl.style.display = 'none';
     }
 
     if (grade !== 0) {

@@ -131,6 +131,37 @@
         text-transform: uppercase;
         letter-spacing: 0.5px;
       }
+      .alert-banner {
+        left: 50%;
+        top: 65px;
+        transform: translateX(-50%);
+        background: rgba(185, 28, 28, 0.94);
+        color: #ffffff;
+        font-weight: 700;
+        font-size: 14.5px;
+        padding: 8px 18px;
+        border-radius: 8px;
+        box-shadow: 0 4px 20px rgba(220, 38, 38, 0.5);
+        animation: pulse-alert 1s infinite alternate;
+        z-index: 25;
+      }
+      @keyframes pulse-alert {
+        from { opacity: 0.88; transform: translateX(-50%) scale(0.98); }
+        to { opacity: 1.0; transform: translateX(-50%) scale(1.02); }
+      }
+      .whistle-banner {
+        left: 50%;
+        top: 112px;
+        transform: translateX(-50%);
+        background: rgba(245, 197, 24, 0.95);
+        color: #111111;
+        font-weight: 700;
+        font-size: 14px;
+        padding: 6px 16px;
+        border-radius: 8px;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+        z-index: 24;
+      }
     </style>
   </head>
   <body>
@@ -146,10 +177,14 @@
       <div id="rv">Reverser: FORWARD [F]</div>
       <div id="nt">Throttle notch 0 of 8</div>
       <div id="br">Brake 0%</div>
+      <div id="eq">Headlights: ON [L] • Wipers: OFF [X] • VCD: Normal [V]</div>
       <div id="gr">Level track</div>
       <div id="nx">Signal: Green</div>
       <div id="tm">Time 0:00. To stop mark 0 m</div>
     </div>
+
+    <div class="p alert-banner" id="vcd-alert" style="display: none;"></div>
+    <div class="p whistle-banner" id="whistle-prompt" style="display: none;"></div>
 
     <div class="p" id="map-panel">
       <div class="hud-title">ROUTE MAP &bull; LONAVALA &rarr; DAUND</div>
@@ -161,14 +196,17 @@
     </div>
 
     <div class="p" id="help">
-      <strong>Loco Controls:</strong><br>
+      <strong>Loco Pilot Controls (WAP-7):</strong><br>
       <b>W / ↑:</b> Throttle Notch Up (auto-releases brake)<br>
-      <b>S / ↓:</b> Throttle Notch Down / Brake<br>
-      <b>Q / E:</b> Apply / Release Brake (tap or hold)<br>
+      <b>S / ↓:</b> Throttle Notch Down / Dynamic Brake<br>
+      <b>Q / E:</b> Apply / Release Air Brake (BP 5.0 kg/cm²)<br>
       <b>Space:</b> Emergency Brake<br>
       <b>F:</b> Reverser (Forward / Reverse)<br>
-      <b>P:</b> Park / End Journey (View Score)<br>
-      <b>H:</b> Dual-tone horn<br>
+      <b>V:</b> VCD Vigilance Pedal (Acknowledge)<br>
+      <b>H / N / B:</b> Horn (H: Dual, N: High, B: Low)<br>
+      <b>L:</b> Locomotive High-Beam Headlights<br>
+      <b>X:</b> Windshield Wipers<br>
+      <b>P:</b> Park / End Journey (View Scorecard)<br>
       <b>C:</b> Camera view (Track / Chase / 3D Cab)<br>
       <b>R:</b> Restart route
     </div>

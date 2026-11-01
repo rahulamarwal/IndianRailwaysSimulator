@@ -4,7 +4,7 @@ import { buildTrack } from './track';
 import { buildScenery } from './scenery';
 import { buildStations } from './stations';
 import { SignalSystem } from './signals';
-import { buildTrain } from './train';
+import { buildTrain, buildAiTrain } from './train';
 import { AudioController } from './audio';
 import { HUD } from './hud';
 import { CameraMode, RouteData } from './types';
@@ -23,6 +23,7 @@ buildScenery(ctx, route.track);
 buildStations(ctx, route.stations);
 const signalSystem = new SignalSystem(ctx, route.signals, route.boards);
 const trainAssembly = buildTrain(ctx, route.train);
+const aiTrain = buildAiTrain(ctx);
 
 // Initialize Systems
 const physics = new TrainPhysics(route);
@@ -89,6 +90,7 @@ function applyCamera(s: number, v: number): void {
 function handleReset(): void {
   physics.reset();
   trainAssembly.setPositionZ(physics.state.s);
+  aiTrain.setPositionZ(physics.aiTrainZ);
   applyCamera(physics.state.s, physics.state.v);
   hud.showStartBanner(route.name);
 }
@@ -103,6 +105,7 @@ window.addEventListener('keydown', e => {
   if (e.code === 'Space') {
     e.preventDefault();
     physics.triggerEmergency();
+    audio.playAirPurge();
   } else if (e.code === 'KeyP') {
     e.preventDefault();
     const isDone = physics.toggleEndJourney();
@@ -126,9 +129,19 @@ window.addEventListener('keydown', e => {
   } else if (e.code === 'KeyE') {
     e.preventDefault();
     physics.releaseBrakeStep();
+    audio.playAirPurge();
   } else if (e.code === 'KeyF') {
     e.preventDefault();
     physics.toggleReverser();
+  } else if (e.code === 'KeyV') {
+    e.preventDefault();
+    physics.acknowledgeVcd();
+  } else if (e.code === 'KeyL') {
+    e.preventDefault();
+    physics.toggleHeadlights();
+  } else if (e.code === 'KeyX') {
+    e.preventDefault();
+    physics.toggleWipers();
   } else if (e.code === 'KeyC') {
     cameraMode = (cameraMode + 1) % 3;
     hud.setCameraMode(cameraMode);
@@ -136,13 +149,17 @@ window.addEventListener('keydown', e => {
   } else if (e.code === 'KeyR') {
     handleReset();
   } else if (e.code === 'KeyH') {
-    audio.startHorn();
+    audio.startDualHorn();
+  } else if (e.code === 'KeyN') {
+    audio.startHighHorn();
+  } else if (e.code === 'KeyB') {
+    audio.startLowHorn();
   }
 });
 
 window.addEventListener('keyup', e => {
   keys[e.code] = false;
-  if (e.code === 'KeyH') {
+  if (e.code === 'KeyH' || e.code === 'KeyN' || e.code === 'KeyB') {
     audio.stopHorn();
   }
 });
@@ -153,6 +170,7 @@ hud.setCameraMode(cameraMode);
 
 // Main Game Loop
 let lastTime = performance.now();
+let lastArcState = false;
 
 function animate(now: number): void {
   requestAnimationFrame(animate);
@@ -167,11 +185,24 @@ function animate(now: number): void {
     hud.hideBanner();
   }
 
+  // Audio Event Triggers: Station arrival chimes & pantograph zap
+  if (physics.justEnteredStation) {
+    audio.playStationChime();
+  }
+
+  if (physics.state.pantographArc && !lastArcState) {
+    audio.playPantographArc();
+  }
+  lastArcState = physics.state.pantographArc;
+
   const { s, v } = physics.state;
   const absSpeedKmh = Math.abs(v) * 3.6;
 
-  // Sync 3D train position along track curves
+  // Sync 3D player train position along track curves
   trainAssembly.setPositionZ(s);
+
+  // Sync 3D opposing AI train position on Track 2
+  aiTrain.setPositionZ(physics.aiTrainZ);
 
   // Sync Camera
   applyCamera(s, v);
@@ -182,8 +213,10 @@ function animate(now: number): void {
   // Update In-Cab 3D Gauges and Instruments
   trainAssembly.updateCabInstruments(physics.state, absSpeedKmh);
 
-  // Audio update
-  audio.update(Math.abs(v));
+  // Audio update (engine whine, track rumble, flange squeal, VCD buzzer, crossing train Doppler)
+  const currentPt = getTrackCurve(s);
+  const aiDist = Math.abs(physics.aiTrainZ - s);
+  audio.update(v, physics.state.n, physics.state.b, currentPt.cant, physics.state.vcdAudio, aiDist);
 
   // HUD and Mini-Map update
   const currentLimit = physics.getSpeedLimitKmh(s);

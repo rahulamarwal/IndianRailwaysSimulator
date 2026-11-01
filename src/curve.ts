@@ -65,3 +65,20 @@ export function getTrackCurve(z: number): TrackPoint {
 
   return { x: 0, dx: 0, yaw: 0, cant: 0 };
 }
+
+/**
+ * Returns world coordinates and heading for any point with lateral offset from track centerline
+ */
+export function getCurvePos(lateralX: number, z: number, y = 0): { x: number; y: number; z: number; yaw: number; cant: number } {
+  const pt = getTrackCurve(z);
+  const nx = Math.cos(pt.yaw);
+  const nz = -Math.sin(pt.yaw);
+  return {
+    x: pt.x + lateralX * nx,
+    y,
+    z: z + lateralX * nz,
+    yaw: pt.yaw,
+    cant: pt.cant
+  };
+}
+

@@ -73,6 +73,18 @@ export interface TrainState {
   run: boolean;    // started motion
   em: boolean;     // emergency brake engaged
   dir: number;     // reverser direction: 1 = Forward, -1 = Reverse
+  bpPressure: number; // Brake Pipe pressure (kg/cm²: 5.0 normal, 3.4 full service, 0 emergency)
+  bcPressure: number; // Brake Cylinder pressure (kg/cm²: 0 released, up to 3.5 applied)
+  fpPressure: number; // Feed Pipe pressure (kg/cm²: 6.0 constant)
+  mrPressure: number; // Main Reservoir pressure (kg/cm²: 9.8 nominal)
+  vcdTimer: number;   // Vigilance Control Device timer (0 to 76s)
+  vcdVisual: boolean; // VCD yellow warning lamp flash (60s - 76s)
+  vcdAudio: boolean;  // VCD loud warning buzzer (68s - 76s)
+  vcdPenalty: boolean;// VCD emergency penalty brake applied
+  headlights: boolean;// Locomotive high-beam headlights (L toggle)
+  wipers: boolean;    // Windshield wipers active (X toggle)
+  pantographArc: boolean; // Momentary pantograph electric arc flash
+  currentStationName: string | null; // Station name if inside platform
 }
 
 export enum CameraMode {

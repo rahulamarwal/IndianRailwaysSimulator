@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { RendererContext } from './renderer';
 import { TrainConfig, TrainState, CameraMode } from './types';
-import { getTrackCurve } from './curve';
+import { getTrackCurve, getCurvePos } from './curve';
 
 export interface TrainAssembly {
   root: THREE.Group;
@@ -11,6 +11,13 @@ export interface TrainAssembly {
   setPositionZ: (z: number) => void;
   setCameraMode: (mode: CameraMode) => void;
   updateCabInstruments: (state: TrainState, speedKmh: number) => void;
+}
+
+export interface AiTrainAssembly {
+  root: THREE.Group;
+  loco: THREE.Group;
+  coaches: THREE.Group[];
+  setPositionZ: (z: number) => void;
 }
 
 export function buildTrain(ctx: RendererContext, config: TrainConfig): TrainAssembly {
@@ -179,6 +186,13 @@ export function buildTrain(ctx: RendererContext, config: TrainConfig): TrainAsse
   );
   headlightBeam.position.set(0, 2.2, 10.18);
   loco.add(headlightHousing, headlightBeam);
+
+  // High-Beam Track Illuminating Spotlight
+  const headlightSpot = new THREE.SpotLight(0xfff5d0, 85, 240, 0.44, 0.6, 1.2);
+  headlightSpot.position.set(0, 2.2, 10.22);
+  headlightSpot.target.position.set(0, 0.4, 75);
+  loco.add(headlightSpot);
+  loco.add(headlightSpot.target);
 
   [-1.1, 1.1].forEach(x => {
     const marker = new THREE.Mesh(
@@ -478,6 +492,19 @@ export function buildTrain(ctx: RendererContext, config: TrainConfig): TrainAsse
   roofGroup.add(vcbBox, vcbBottle, surgeArrester);
   loco.add(roofGroup);
 
+  // Pantograph High-Voltage Electric Arc Flash Light & Spark
+  const pantoArcLight = new THREE.PointLight(0x7dd3fc, 0, 32, 2.2);
+  pantoArcLight.position.set(0, 7.95, -6.25);
+  loco.add(pantoArcLight);
+
+  const pantoArcSpark = new THREE.Mesh(
+    new THREE.DodecahedronGeometry(0.18, 0),
+    new THREE.MeshBasicMaterial({ color: 0xe0f2fe, wireframe: true })
+  );
+  pantoArcSpark.position.set(0, 7.95, -6.25);
+  pantoArcSpark.visible = false;
+  loco.add(pantoArcSpark);
+
   // ==========================================
   // HIGH-QUALITY 3D WAP-7 CABIN INTERIOR
   // ==========================================
@@ -677,6 +704,41 @@ export function buildTrain(ctx: RendererContext, config: TrainConfig): TrainAsse
   brakeDial.rotation.x = -0.26;
   cabInterior.add(brakeBezel, brakeDial);
 
+  // Active Duplex Brake Gauge Needles
+  const bpNeedleGroup = new THREE.Group();
+  bpNeedleGroup.position.set(-0.62, 3.53, 9.59);
+  bpNeedleGroup.rotation.x = -0.26;
+  const bpNeedleMesh = new THREE.Mesh(
+    new THREE.BoxGeometry(0.007, 0.08, 0.004),
+    new THREE.MeshBasicMaterial({ color: 0xffffff })
+  );
+  bpNeedleMesh.position.set(0, 0.035, 0);
+  bpNeedleGroup.add(bpNeedleMesh);
+
+  const bcNeedleGroup = new THREE.Group();
+  bcNeedleGroup.position.set(-0.62, 3.53, 9.59);
+  bcNeedleGroup.rotation.x = -0.26;
+  const bcNeedleMesh = new THREE.Mesh(
+    new THREE.BoxGeometry(0.007, 0.08, 0.004),
+    new THREE.MeshBasicMaterial({ color: 0xef4444 })
+  );
+  bcNeedleMesh.position.set(0, 0.035, 0);
+  bcNeedleGroup.add(bcNeedleMesh);
+
+  cabInterior.add(bpNeedleGroup, bcNeedleGroup);
+
+  // VCD (Vigilance Control Device) Flashing Indicator Lamp
+  const vcdBezel = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.02, 16), chromeMat);
+  vcdBezel.rotation.x = Math.PI / 2 - 0.26;
+  vcdBezel.position.set(-0.80, 3.53, 9.56);
+  const vcdLamp = new THREE.Mesh(
+    new THREE.CircleGeometry(0.038, 16),
+    new THREE.MeshBasicMaterial({ color: 0x3d2005 })
+  );
+  vcdLamp.position.set(-0.80, 3.53, 9.58);
+  vcdLamp.rotation.x = -0.26;
+  cabInterior.add(vcdBezel, vcdLamp);
+
   // 3. Dynamic DDU (Driver Display Unit) TFT Monitor
   const dduCanvas = document.createElement('canvas');
   dduCanvas.width = 512;
@@ -753,13 +815,20 @@ export function buildTrain(ctx: RendererContext, config: TrainConfig): TrainAsse
   cabInterior.add(emgRing, emgButton);
 
   // 7. Windshield Wipers with linkage
+  const wiperArms: THREE.Group[] = [];
   [-0.72, 0.72].forEach(x => {
     const wiperMotor = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.05, 8), createMaterial(0x111111));
     wiperMotor.position.set(x, 3.42, 9.94);
-    const wiperArm = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.52, 0.02), createMaterial(0x151515));
-    wiperArm.rotation.z = -0.32;
-    wiperArm.position.set(x + 0.08, 3.68, 9.95);
-    cabInterior.add(wiperMotor, wiperArm);
+    cabInterior.add(wiperMotor);
+
+    const wiperPivot = new THREE.Group();
+    wiperPivot.position.set(x, 3.42, 9.95);
+    const wiperBlade = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.52, 0.02), createMaterial(0x151515));
+    wiperBlade.position.set(0.08, 0.26, 0);
+    wiperBlade.rotation.z = -0.32;
+    wiperPivot.add(wiperBlade);
+    cabInterior.add(wiperPivot);
+    wiperArms.push(wiperPivot);
   });
 
   // 8. Loco Pilot Ergonomic Driver Seat
@@ -840,7 +909,49 @@ export function buildTrain(ctx: RendererContext, config: TrainConfig): TrainAsse
       // 4. Rotate brake valve handle based on commanded brake
       brakeValveGroup.rotation.x = state.b * 0.65;
 
-      // 5. Update DDU screen canvas
+      // 5. Headlight illumination toggle
+      headlightSpot.intensity = state.headlights ? 85 : 0;
+      (headlightBeam.material as THREE.MeshBasicMaterial).color.setHex(state.headlights ? 0xfff7d0 : 0x222222);
+
+      // 6. Pantograph electric arc flash
+      if (state.pantographArc) {
+        pantoArcLight.intensity = 55;
+        pantoArcSpark.visible = true;
+      } else {
+        pantoArcLight.intensity = 0;
+        pantoArcSpark.visible = false;
+      }
+
+      // 7. Windshield wipers oscillation
+      if (state.wipers) {
+        const wiperAngle = Math.sin(Date.now() * 0.007) * 0.44 - 0.2;
+        wiperArms.forEach(w => {
+          w.rotation.z = wiperAngle;
+        });
+      } else {
+        wiperArms.forEach(w => {
+          w.rotation.z = -0.32;
+        });
+      }
+
+      // 8. VCD Dashboard Indicator Lamp
+      if (state.vcdVisual || state.vcdAudio) {
+        const flash = Math.sin(Date.now() * 0.015) > 0;
+        (vcdLamp.material as THREE.MeshBasicMaterial).color.setHex(flash ? 0xfacc15 : 0x78350f);
+      } else {
+        (vcdLamp.material as THREE.MeshBasicMaterial).color.setHex(0x3d2005);
+      }
+
+      // 9. Duplex Air Brake Gauge Needles (BP & BC)
+      // BP: 5.0 kg/cm² is ~2.0 rad, 0 is -1.8 rad
+      const bpAngle = 2.0 - (1 - Math.max(0, Math.min(5.0, state.bpPressure)) / 5.0) * 3.8;
+      bpNeedleGroup.rotation.z = bpAngle;
+
+      // BC: 0 is -1.8 rad, 3.5 is +2.0 rad
+      const bcAngle = -1.8 + (Math.max(0, Math.min(3.5, state.bcPressure)) / 3.5) * 3.8;
+      bcNeedleGroup.rotation.z = bcAngle;
+
+      // 10. Update DDU screen canvas
       dduFrame++;
       if (dduFrame % 3 === 0) {
         dduCtx.fillStyle = '#080d14';
@@ -848,63 +959,241 @@ export function buildTrain(ctx: RendererContext, config: TrainConfig): TrainAsse
 
         // Header bar
         dduCtx.fillStyle = '#142236';
-        dduCtx.fillRect(0, 0, 512, 44);
+        dduCtx.fillRect(0, 0, 512, 40);
         dduCtx.fillStyle = '#f5c518';
-        dduCtx.font = 'bold 20px Arial';
-        dduCtx.fillText('INDIAN RAILWAYS - WAP-7 PROPULSION (DDU)', 18, 30);
+        dduCtx.font = 'bold 18px Arial';
+        dduCtx.fillText('INDIAN RAILWAYS - WAP-7 PROPULSION (DDU)', 16, 26);
 
         // Digital Speed Box
         dduCtx.fillStyle = '#0f1b2b';
-        dduCtx.fillRect(18, 56, 225, 125);
+        dduCtx.fillRect(16, 48, 230, 115);
         dduCtx.fillStyle = '#94a3b8';
-        dduCtx.font = '15px Arial';
-        dduCtx.fillText('ACTUAL SPEED', 32, 84);
+        dduCtx.font = '13px Arial';
+        dduCtx.fillText('ACTUAL SPEED', 28, 70);
         dduCtx.fillStyle = speedKmh > 102 ? '#ef4444' : '#4ade80';
-        dduCtx.font = 'bold 56px Arial';
-        dduCtx.fillText(Math.round(speedKmh).toString(), 32, 150);
-        dduCtx.font = 'bold 20px Arial';
-        dduCtx.fillText('km/h', 145, 150);
+        dduCtx.font = 'bold 50px Arial';
+        dduCtx.fillText(Math.round(speedKmh).toString(), 28, 126);
+        dduCtx.font = 'bold 18px Arial';
+        dduCtx.fillText('km/h', 130, 126);
 
         // Right Telemetry Box
         dduCtx.fillStyle = '#0f1b2b';
-        dduCtx.fillRect(255, 56, 238, 125);
-        dduCtx.font = 'bold 16px Arial';
+        dduCtx.fillRect(256, 48, 240, 115);
+        dduCtx.font = 'bold 14px Arial';
         dduCtx.fillStyle = state.dir === 1 ? '#4ade80' : '#f59e0b';
-        dduCtx.fillText(`REV: ${state.dir === 1 ? 'FORWARD' : 'REVERSE'}`, 270, 82);
+        dduCtx.fillText(`REV: ${state.dir === 1 ? 'FORWARD' : 'REVERSE'}`, 268, 70);
         dduCtx.fillStyle = '#ffffff';
-        dduCtx.fillText(`NOTCH: ${state.n} / 8`, 270, 107);
-        dduCtx.fillText(`LINE VOLTS: 25.2 kV AC`, 270, 132);
+        dduCtx.fillText(`NOTCH: ${state.n} / 8`, 268, 92);
         dduCtx.fillStyle = '#38bdf8';
-        dduCtx.fillText(`BP: ${(5.0 - state.b * 1.6).toFixed(1)} kg/cm²`, 270, 157);
+        dduCtx.fillText(`BP: ${state.bpPressure.toFixed(2)} | BC: ${state.bcPressure.toFixed(2)}`, 268, 114);
+        dduCtx.fillStyle = '#94a3b8';
+        dduCtx.fillText(`FP: ${state.fpPressure.toFixed(1)} | MR: ${state.mrPressure.toFixed(1)} kg/cm²`, 268, 136);
 
         // Tractive Effort / Dynamic Brake Bar
         dduCtx.fillStyle = '#0f1b2b';
-        dduCtx.fillRect(18, 195, 475, 42);
+        dduCtx.fillRect(16, 170, 480, 36);
         const tePercent = (state.n / 8) * (state.b > 0.15 ? 0 : 1);
         if (tePercent > 0) {
           dduCtx.fillStyle = '#38bdf8';
-          dduCtx.fillRect(18, 195, 475 * tePercent, 42);
+          dduCtx.fillRect(16, 170, 480 * tePercent, 36);
         } else if (state.b > 0) {
           dduCtx.fillStyle = '#ef4444';
-          dduCtx.fillRect(18, 195, 475 * state.b, 42);
+          dduCtx.fillRect(16, 170, 480 * state.b, 36);
         }
         dduCtx.fillStyle = '#ffffff';
-        dduCtx.font = 'bold 16px Arial';
-        dduCtx.fillText(`TE / BE EFFORT: ${Math.round(tePercent * 322)} kN`, 32, 222);
+        dduCtx.font = 'bold 15px Arial';
+        dduCtx.fillText(`TE / BE EFFORT: ${Math.round(tePercent * 322)} kN`, 26, 194);
+
+        // Equipment & Auxiliaries line
+        dduCtx.fillStyle = '#0f1b2b';
+        dduCtx.fillRect(16, 212, 480, 32);
+        dduCtx.font = 'bold 13px Arial';
+        dduCtx.fillStyle = state.headlights ? '#facc15' : '#64748b';
+        dduCtx.fillText(`LIGHTS: ${state.headlights ? 'ON' : 'OFF'} [L]`, 26, 233);
+        dduCtx.fillStyle = state.wipers ? '#38bdf8' : '#64748b';
+        dduCtx.fillText(`WIPERS: ${state.wipers ? 'ON' : 'OFF'} [X]`, 180, 233);
+        dduCtx.fillStyle = '#4ade80';
+        dduCtx.fillText(`OHE: 25 kV AC`, 340, 233);
 
         // Status Diagnostics Bar
-        dduCtx.fillStyle = state.em ? '#b91c1c' : '#1a3352';
+        let barColor = '#1a3352';
+        let statusMsg = 'TRACTION HEALTHY - ALL SYSTEMS NORMAL';
+
+        if (state.vcdPenalty) {
+          barColor = '#b91c1c';
+          statusMsg = '⚠️ VCD PENALTY EMERGENCY BRAKE ENGAGED - RESET [V]';
+        } else if (state.vcdVisual || state.vcdAudio) {
+          barColor = '#d97706';
+          statusMsg = '⚠️ VCD ALERT: ACKNOWLEDGE DRIVER PEDAL [V] ⚠️';
+        } else if (state.em) {
+          barColor = '#b91c1c';
+          statusMsg = 'EMERGENCY BRAKE ENGAGED - TRACTION INTERLOCK';
+        } else if (state.b > 0.05) {
+          barColor = '#2563eb';
+          statusMsg = `PNEUMATIC BRAKE APPLIED (BP: ${state.bpPressure.toFixed(2)} kg/cm²)`;
+        } else if (state.currentStationName) {
+          barColor = '#065f46';
+          statusMsg = `PLATFORM STOP: ${state.currentStationName}`;
+        }
+
+        dduCtx.fillStyle = barColor;
         dduCtx.fillRect(0, 252, 512, 68);
         dduCtx.fillStyle = '#ffffff';
-        dduCtx.font = 'bold 18px Arial';
-        const statusMsg = state.em
-          ? 'EMERGENCY BRAKE ENGAGED - TRACTION INTERLOCK'
-          : state.b > 0.05
-          ? 'PNEUMATIC BRAKE APPLIED (GRADUATED RELEASE)'
-          : 'TRACTION HEALTHY - ALL SYSTEMS NORMAL';
-        dduCtx.fillText(statusMsg, 18, 292);
+        dduCtx.font = 'bold 16px Arial';
+        dduCtx.fillText(statusMsg, 16, 292);
 
         dduTexture.needsUpdate = true;
+      }
+    }
+  };
+}
+
+/**
+ * Builds an opposing WAP-7 express train with 8 ICF coaches on Track 2 (offset +5.30m)
+ */
+export function buildAiTrain(ctx: RendererContext): AiTrainAssembly {
+  const root = new THREE.Group();
+  const { scene, createMaterial, createCanvasTexture } = ctx;
+
+  const loco = new THREE.Group();
+  root.add(loco);
+
+  const locoBodyMat = createMaterial(0x1e4a96, { roughness: 0.5, metalness: 0.25 });
+  const creamMat = createMaterial(0xf3e6c4, { roughness: 0.5, metalness: 0.1 });
+  const roofMat = createMaterial(0x9a9a9a, { roughness: 0.7 });
+  const underbodyMat = createMaterial(0x222222);
+
+  // 1. Locomotive Machine Room Shell
+  const locoSideTex = createCanvasTexture(512, 128, (c, w, hh) => {
+    c.fillStyle = '#1e4a96';
+    c.fillRect(0, 0, w, hh);
+    c.fillStyle = '#f3e6c4';
+    c.fillRect(0, hh * 0.68, w, 14);
+    c.fillStyle = '#111e30';
+    for (let x = 60; x < w - 60; x += 55) {
+      c.fillRect(x, 25, 36, 42);
+    }
+  });
+
+  const locoSideMat = new THREE.MeshStandardMaterial({
+    roughness: 0.5,
+    metalness: 0.25,
+    map: locoSideTex
+  });
+
+  const machineRoom = new THREE.Mesh(
+    new THREE.BoxGeometry(3.2, 3.6, 17.0),
+    [locoSideMat, locoSideMat, roofMat, underbodyMat, locoBodyMat, locoBodyMat]
+  );
+  machineRoom.position.set(0, 2.9, 0);
+  machineRoom.castShadow = true;
+  loco.add(machineRoom);
+
+  // Front Cab Nose
+  const frontNose = new THREE.Mesh(new THREE.BoxGeometry(3.2, 2.2, 0.4), locoBodyMat);
+  frontNose.position.set(0, 2.2, 8.7);
+  const frontStripe = new THREE.Mesh(new THREE.BoxGeometry(3.22, 0.25, 0.42), creamMat);
+  frontStripe.position.set(0, 2.65, 8.7);
+  loco.add(frontNose, frontStripe);
+
+  // Twin Glowing Headlights
+  const headlightBeam = new THREE.Mesh(
+    new THREE.BoxGeometry(0.58, 0.28, 0.08),
+    new THREE.MeshBasicMaterial({ color: 0xfff7d0 })
+  );
+  headlightBeam.position.set(0, 2.2, 8.92);
+  loco.add(headlightBeam);
+
+  // Forward Spotlight for AI train
+  const aiLight = new THREE.SpotLight(0xfff5d0, 65, 140, 0.4, 0.6, 1.2);
+  aiLight.position.set(0, 2.2, 8.9);
+  aiLight.target.position.set(0, 0.4, 60);
+  loco.add(aiLight);
+  loco.add(aiLight.target);
+
+  // Red markers
+  [-1.1, 1.1].forEach(x => {
+    const marker = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.08, 0.08, 0.06, 10),
+      new THREE.MeshBasicMaterial({ color: 0xff3333 })
+    );
+    marker.rotation.x = Math.PI / 2;
+    marker.position.set(x, 2.2, 8.92);
+    loco.add(marker);
+  });
+
+  // Cowcatcher
+  const cowcatcher = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.45, 0.25), createMaterial(0x111111));
+  cowcatcher.position.set(0, 0.55, 8.9);
+  loco.add(cowcatcher);
+
+  // Raised Pantograph on AI loco
+  const pantoMat = createMaterial(0x525860, { metalness: 0.85, roughness: 0.25 });
+  const pantoArm = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 2.0, 8), pantoMat);
+  pantoArm.rotation.x = -0.65;
+  pantoArm.position.set(0, 5.4, -4.5);
+  const pantoPan = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.04, 0.2), pantoMat);
+  pantoPan.position.set(0, 6.0, -5.2);
+  loco.add(pantoArm, pantoPan);
+
+  // 2. 8 Passenger Coaches (ICF dark blue livery)
+  const coaches: THREE.Group[] = [];
+  const coachSideTex = createCanvasTexture(512, 128, (c, w, hh) => {
+    c.fillStyle = '#2255a4';
+    c.fillRect(0, 0, w, hh);
+    c.fillStyle = '#ffffff';
+    c.fillRect(0, hh * 0.72, w, 10);
+    c.fillStyle = '#14202e';
+    for (let x = 14; x < w - 30; x += 62) {
+      c.fillRect(x, 30, 40, 36);
+    }
+  });
+
+  const coachSideMat = new THREE.MeshStandardMaterial({
+    roughness: 0.6,
+    metalness: 0.2,
+    map: coachSideTex
+  });
+
+  for (let i = 0; i < 8; i++) {
+    const coachGroup = new THREE.Group();
+    const coachMesh = new THREE.Mesh(
+      new THREE.BoxGeometry(3.2, 3.1, 23.0),
+      [coachSideMat, coachSideMat, roofMat, underbodyMat, locoBodyMat, locoBodyMat]
+    );
+    coachMesh.position.set(0, 2.65, 0);
+    coachMesh.castShadow = true;
+    coachGroup.add(coachMesh);
+
+    // Bogies
+    const bogieMat = createMaterial(0x1c1c1c);
+    [-7.3, 7.3].forEach(bz => {
+      const bogie = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.9, 3.6), bogieMat);
+      bogie.position.set(0, 0.75, bz);
+      coachGroup.add(bogie);
+    });
+
+    root.add(coachGroup);
+    coaches.push(coachGroup);
+  }
+
+  scene.add(root);
+
+  return {
+    root,
+    loco,
+    coaches,
+    setPositionZ: (s: number) => {
+      // AI train travels in opposite direction on Track 2 (offset +5.30m)
+      const locoPos = getCurvePos(5.30, s);
+      loco.position.set(locoPos.x, 0, locoPos.z);
+      loco.rotation.set(0, locoPos.yaw + Math.PI, -locoPos.cant);
+
+      for (let i = 0; i < coaches.length; i++) {
+        const cz = s + 22.5 + 24 * i; // trailing behind loco towards Daund (+Z)
+        const cPos = getCurvePos(5.30, cz);
+        coaches[i].position.set(cPos.x, 0, cPos.z);
+        coaches[i].rotation.set(0, cPos.yaw + Math.PI, -cPos.cant);
       }
     }
   };
