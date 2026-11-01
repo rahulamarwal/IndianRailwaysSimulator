@@ -598,19 +598,33 @@ export function buildScenery(ctx: RendererContext, config: TrackConfig): THREE.G
   // SECTION A: WESTERN GHATS NATURE & SAHYADRI HILLS (LONAVALA TO PUNE: Z < 3900)
   // =========================================================================
 
+  // Helper to prevent trees, rocks or bushes from spawning inside platforms or on bridges
+  const isProtectedZone = (z: number): boolean => {
+    // Platforms: Lonavala (0-300), Shivaji Nagar (2360-2720), Pune (3860-4240), Uruli (6260-6620), Daund (8460-8800)
+    if (z <= 320) return true;
+    if (z >= 2360 && z <= 2720) return true;
+    if (z >= 3860 && z <= 4240) return true;
+    if (z >= 6260 && z <= 6620) return true;
+    if (z >= 8460) return true;
+    // Mula river rail bridge (3080 to 3360)
+    if (z >= 3080 && z <= 3360) return true;
+    return false;
+  };
+
   // 1. Sahyadri Stepped Basalt Mesas (Lohagad / Visapur Tableland Plateaus)
-  const mesaCount = 48;
-  const mesaGeo = createSahyadriMesaGeo(75, 95);
+  // Base radius 55m -> max radius ~93m. Placed safely in background (xDist <= -180m or >= +190m)
+  const mesaCount = 44;
+  const mesaGeo = createSahyadriMesaGeo(55, 90);
   const mesas = new THREE.InstancedMesh(mesaGeo, basaltMat, mesaCount);
   mesas.castShadow = true;
   mesas.receiveShadow = true;
 
   for (let i = 0; i < mesaCount; i++) {
     const side = i % 2 === 0 ? -1 : 1;
-    const xDist = side === -1 ? -110 - rnd() * 140 : 120 + rnd() * 140;
-    const z = startZ + 80 + (i / mesaCount) * 3650 + (rnd() - 0.5) * 70;
-    const scaleY = 0.85 + rnd() * 0.7;
-    const scaleXZ = 0.9 + rnd() * 0.6;
+    const xDist = side === -1 ? -180 - rnd() * 120 : 190 + rnd() * 130;
+    const z = startZ + 80 + (i / mesaCount) * 3650 + (rnd() - 0.5) * 60;
+    const scaleY = 0.85 + rnd() * 0.5;
+    const scaleXZ = 0.85 + rnd() * 0.45;
     const pos = getCurvePos(xDist, z, 0);
 
     dummy.position.set(pos.x, pos.y, pos.z);
@@ -623,17 +637,18 @@ export function buildScenery(ctx: RendererContext, config: TrackConfig): THREE.G
   sceneryGroup.add(mesas);
 
   // 2. Nagphani / Duke's Nose Volcanic Spire Pinnacles (Iconic Khandala / Lonavala landmark)
+  // Base radius 40m -> max radius ~65m. Placed safely (xDist <= -190m or >= +200m)
   const pinnacleCount = 18;
-  const pinnacleGeo = createSahyadriPinnacleGeo(50, 125);
+  const pinnacleGeo = createSahyadriPinnacleGeo(40, 130);
   const pinnacles = new THREE.InstancedMesh(pinnacleGeo, basaltMat, pinnacleCount);
   pinnacles.castShadow = true;
   pinnacles.receiveShadow = true;
 
   for (let i = 0; i < pinnacleCount; i++) {
     const side = i % 2 === 0 ? -1 : 1;
-    const xDist = side === -1 ? -140 - rnd() * 160 : 150 + rnd() * 160;
+    const xDist = side === -1 ? -190 - rnd() * 110 : 200 + rnd() * 110;
     const z = startZ + 250 + (i / pinnacleCount) * 3350 + (rnd() - 0.5) * 60;
-    const s = 0.9 + rnd() * 0.6;
+    const s = 0.85 + rnd() * 0.5;
     const pos = getCurvePos(xDist, z, 0);
 
     dummy.position.set(pos.x, pos.y, pos.z);
@@ -646,18 +661,19 @@ export function buildScenery(ctx: RendererContext, config: TrackConfig): THREE.G
   sceneryGroup.add(pinnacles);
 
   // 3. Sahyadri Rolling Ghat Foothills
-  const foothillCount = 85;
-  const foothillGeo = createSahyadriFoothillGeo(32, 28);
+  // Base radius 22m -> max radius ~32m. Placed in mid-ground (xDist <= -75m or >= +85m)
+  const foothillCount = 75;
+  const foothillGeo = createSahyadriFoothillGeo(22, 18);
   const foothills = new THREE.InstancedMesh(foothillGeo, foothillMat, foothillCount);
   foothills.receiveShadow = true;
 
   for (let i = 0; i < foothillCount; i++) {
     const side = i % 2 === 0 ? -1 : 1;
-    const xDist = side === -1 ? -45 - rnd() * 55 : 48 + rnd() * 55;
+    const xDist = side === -1 ? -75 - rnd() * 45 : 85 + rnd() * 45;
     const z = startZ + 50 + (i / foothillCount) * 3700;
     const pos = getCurvePos(xDist, z, -2 + rnd() * 3);
-    const sx = 0.9 + rnd() * 0.8;
-    const sy = 0.7 + rnd() * 0.6;
+    const sx = 0.85 + rnd() * 0.5;
+    const sy = 0.65 + rnd() * 0.5;
 
     dummy.position.set(pos.x, pos.y, pos.z);
     dummy.scale.set(sx, sy, sx * 1.25);
@@ -669,66 +685,111 @@ export function buildScenery(ctx: RendererContext, config: TrackConfig): THREE.G
   sceneryGroup.add(foothills);
 
   // 4. Basalt Railway Cutting Rock Outcrops along Trackside
-  const cuttingRockCount = 75;
+  // Radius ~2.1m. Placed at xDist <= -9.5m or >= +16.5m (well clear of Track 1 @ 0 and Track 2 @ +5.30m)
+  const cuttingRockCount = 65;
   const cuttingRockGeo = createBasaltRockGeo();
   const cuttingRocks = new THREE.InstancedMesh(cuttingRockGeo, basaltMat, cuttingRockCount);
   cuttingRocks.castShadow = true;
   cuttingRocks.receiveShadow = true;
 
+  let rockIdx = 0;
   for (let i = 0; i < cuttingRockCount; i++) {
     const side = i % 2 === 0 ? -1 : 1;
-    const xDist = side === -1 ? -14 - rnd() * 12 : 17 + rnd() * 12;
-    const z = 450 + (i / cuttingRockCount) * 2300 + (rnd() - 0.5) * 25;
-    const s = 1.0 + rnd() * 1.4;
-    const pos = getCurvePos(xDist, z, 0.4);
+    const xDist = side === -1 ? -9.5 - rnd() * 6 : 16.5 + rnd() * 6;
+    const z = 450 + (i / cuttingRockCount) * 2200 + (rnd() - 0.5) * 20;
+    if (isProtectedZone(z)) continue;
+    const s = 0.8 + rnd() * 0.5;
+    const pos = getCurvePos(xDist, z, 0.35);
 
     dummy.position.set(pos.x, pos.y, pos.z);
-    dummy.scale.set(s * 1.4, s * 0.9, s * 1.3);
+    dummy.scale.set(s * 1.2, s * 0.8, s * 1.1);
     dummy.rotation.set((rnd() - 0.5) * 0.4, rnd() * Math.PI * 2, (rnd() - 0.5) * 0.3);
     dummy.updateMatrix();
-    cuttingRocks.setMatrixAt(i, dummy.matrix);
+    cuttingRocks.setMatrixAt(rockIdx++, dummy.matrix);
   }
+  cuttingRocks.count = rockIdx;
   cuttingRocks.instanceMatrix.needsUpdate = true;
   sceneryGroup.add(cuttingRocks);
 
-  // 5. Spreading Grand Banyan & Peepal Trees (Ficus benghalensis / Ficus religiosa)
-  const banyanCount = 130;
+  // 5. Spreading Grand Banyan & Peepal Trees (Canopy span 15m, radius 7.5m)
+  // Left: xDist <= -25m. Right: xDist >= +28m.
+  const banyanCount = 120;
   const { trunkGeo: bTrunkGeo, crownGeo: bCrownGeo } = createBanyanTreeGeometries();
   const banyanTrunks = new THREE.InstancedMesh(bTrunkGeo, barkMat, banyanCount);
   const banyanCrowns = new THREE.InstancedMesh(bCrownGeo, banyanMat, banyanCount);
   banyanTrunks.castShadow = true;
   banyanCrowns.castShadow = true;
 
+  let banyanIdx = 0;
   for (let i = 0; i < banyanCount; i++) {
     const side = i % 2 === 0 ? -1 : 1;
-    const xDist = side === -1 ? -22 - rnd() * 55 : 26 + rnd() * 55;
-    const z = startZ + 35 + (i / banyanCount) * 3720 + (rnd() - 0.5) * 25;
-    const s = 0.85 + rnd() * 0.55;
+    const xDist = side === -1 ? -25 - rnd() * 35 : 28 + rnd() * 35;
+    const z = startZ + 35 + (i / banyanCount) * 3720 + (rnd() - 0.5) * 20;
+    if (isProtectedZone(z)) continue;
+    const s = 0.8 + rnd() * 0.45;
     const pos = getCurvePos(xDist, z, 0);
 
     dummy.position.set(pos.x, pos.y, pos.z);
     dummy.scale.set(s, s, s);
     dummy.rotation.set(0, rnd() * Math.PI * 2, 0);
     dummy.updateMatrix();
-    banyanTrunks.setMatrixAt(i, dummy.matrix);
-    banyanCrowns.setMatrixAt(i, dummy.matrix);
+    banyanTrunks.setMatrixAt(banyanIdx, dummy.matrix);
+    banyanCrowns.setMatrixAt(banyanIdx, dummy.matrix);
+    banyanIdx++;
   }
+  banyanTrunks.count = banyanIdx;
+  banyanCrowns.count = banyanIdx;
   banyanTrunks.instanceMatrix.needsUpdate = true;
   banyanCrowns.instanceMatrix.needsUpdate = true;
   sceneryGroup.add(banyanTrunks, banyanCrowns);
 
-  // 6. Flowering Gulmohar Trees (Delonix regia - Flame of the Forest)
-  const gulmoharCount = 140;
+  // 6. Flowering Gulmohar Trees (Canopy span 11m, radius 5.5m)
+  // Left: xDist <= -19m. Right: xDist >= +23m.
+  const gulmoharCount = 130;
   const { trunkGeo: gTrunkGeo, crownGeo: gCrownGeo } = createGulmoharTreeGeometries();
   const gulmoharTrunks = new THREE.InstancedMesh(gTrunkGeo, barkMat, gulmoharCount);
   const gulmoharCrowns = new THREE.InstancedMesh(gCrownGeo, gulmoharMat, gulmoharCount);
   gulmoharTrunks.castShadow = true;
   gulmoharCrowns.castShadow = true;
 
+  let gulmoharIdx = 0;
   for (let i = 0; i < gulmoharCount; i++) {
     const side = i % 2 === 0 ? -1 : 1;
-    const xDist = side === -1 ? -17 - rnd() * 45 : 22 + rnd() * 45;
+    const xDist = side === -1 ? -19 - rnd() * 30 : 23 + rnd() * 30;
     const z = startZ + 60 + (i / gulmoharCount) * 3700 + (rnd() - 0.5) * 20;
+    if (isProtectedZone(z)) continue;
+    const s = 0.8 + rnd() * 0.4;
+    const pos = getCurvePos(xDist, z, 0);
+
+    dummy.position.set(pos.x, pos.y, pos.z);
+    dummy.scale.set(s, s, s);
+    dummy.rotation.set(0, rnd() * Math.PI * 2, 0);
+    dummy.updateMatrix();
+    gulmoharTrunks.setMatrixAt(gulmoharIdx, dummy.matrix);
+    gulmoharCrowns.setMatrixAt(gulmoharIdx, dummy.matrix);
+    gulmoharIdx++;
+  }
+  gulmoharTrunks.count = gulmoharIdx;
+  gulmoharCrowns.count = gulmoharIdx;
+  gulmoharTrunks.instanceMatrix.needsUpdate = true;
+  gulmoharCrowns.instanceMatrix.needsUpdate = true;
+  sceneryGroup.add(gulmoharTrunks, gulmoharCrowns);
+
+  // 7. Dense Neem & Mango Trees (Canopy radius 4.8m)
+  // Left: xDist <= -17m. Right: xDist >= +21m.
+  const neemCount = 180;
+  const { trunkGeo: nTrunkGeo, crownGeo: nCrownGeo } = createNeemTreeGeometries();
+  const neemTrunks = new THREE.InstancedMesh(nTrunkGeo, barkMat, neemCount);
+  const neemCrowns = new THREE.InstancedMesh(nCrownGeo, neemMat, neemCount);
+  neemTrunks.castShadow = true;
+  neemCrowns.castShadow = true;
+
+  let neemIdx = 0;
+  for (let i = 0; i < neemCount; i++) {
+    const side = i % 2 === 0 ? -1 : 1;
+    const xDist = side === -1 ? -17 - rnd() * 35 : 21 + rnd() * 35;
+    const z = startZ + 20 + (i / neemCount) * 3780 + (rnd() - 0.5) * 20;
+    if (isProtectedZone(z)) continue;
     const s = 0.8 + rnd() * 0.5;
     const pos = getCurvePos(xDist, z, 0);
 
@@ -736,84 +797,71 @@ export function buildScenery(ctx: RendererContext, config: TrackConfig): THREE.G
     dummy.scale.set(s, s, s);
     dummy.rotation.set(0, rnd() * Math.PI * 2, 0);
     dummy.updateMatrix();
-    gulmoharTrunks.setMatrixAt(i, dummy.matrix);
-    gulmoharCrowns.setMatrixAt(i, dummy.matrix);
+    neemTrunks.setMatrixAt(neemIdx, dummy.matrix);
+    neemCrowns.setMatrixAt(neemIdx, dummy.matrix);
+    neemIdx++;
   }
-  gulmoharTrunks.instanceMatrix.needsUpdate = true;
-  gulmoharCrowns.instanceMatrix.needsUpdate = true;
-  sceneryGroup.add(gulmoharTrunks, gulmoharCrowns);
-
-  // 7. Dense Neem & Mango Trees (Azadirachta indica / Mangifera indica)
-  const neemCount = 190;
-  const { trunkGeo: nTrunkGeo, crownGeo: nCrownGeo } = createNeemTreeGeometries();
-  const neemTrunks = new THREE.InstancedMesh(nTrunkGeo, barkMat, neemCount);
-  const neemCrowns = new THREE.InstancedMesh(nCrownGeo, neemMat, neemCount);
-  neemTrunks.castShadow = true;
-  neemCrowns.castShadow = true;
-
-  for (let i = 0; i < neemCount; i++) {
-    const side = i % 2 === 0 ? -1 : 1;
-    const xDist = side === -1 ? -16 - rnd() * 60 : 21 + rnd() * 60;
-    const z = startZ + 20 + (i / neemCount) * 3780 + (rnd() - 0.5) * 20;
-    const s = 0.8 + rnd() * 0.6;
-    const pos = getCurvePos(xDist, z, 0);
-
-    dummy.position.set(pos.x, pos.y, pos.z);
-    dummy.scale.set(s, s, s);
-    dummy.rotation.set(0, rnd() * Math.PI * 2, 0);
-    dummy.updateMatrix();
-    neemTrunks.setMatrixAt(i, dummy.matrix);
-    neemCrowns.setMatrixAt(i, dummy.matrix);
-  }
+  neemTrunks.count = neemIdx;
+  neemCrowns.count = neemIdx;
   neemTrunks.instanceMatrix.needsUpdate = true;
   neemCrowns.instanceMatrix.needsUpdate = true;
   sceneryGroup.add(neemTrunks, neemCrowns);
 
-  // 8. Wild Date Palms (Phoenix sylvestris / Shindi) & Coconut Palms with Curved Trunks
-  const palmCount = 110;
+  // 8. Wild Date Palms & Coconut Palms (Frond span 4.2m)
+  // Left: xDist <= -17m. Right: xDist >= +21m.
+  const palmCount = 100;
   const { trunkGeo: pTrunkGeo, crownGeo: pCrownGeo } = createPalmTreeGeometries();
   const palmTrunks = new THREE.InstancedMesh(pTrunkGeo, barkMat, palmCount);
   const palmCrowns = new THREE.InstancedMesh(pCrownGeo, palmFrondMat, palmCount);
   palmTrunks.castShadow = true;
   palmCrowns.castShadow = true;
 
+  let palmIdx = 0;
   for (let i = 0; i < palmCount; i++) {
     const side = i % 2 === 0 ? -1 : 1;
-    const xDist = side === -1 ? -18 - rnd() * 45 : 24 + rnd() * 45;
-    const z = startZ + 80 + (i / palmCount) * 3650 + (rnd() - 0.5) * 30;
-    const s = 0.85 + rnd() * 0.4;
+    const xDist = side === -1 ? -17 - rnd() * 30 : 21 + rnd() * 30;
+    const z = startZ + 80 + (i / palmCount) * 3650 + (rnd() - 0.5) * 25;
+    if (isProtectedZone(z)) continue;
+    const s = 0.85 + rnd() * 0.35;
     const pos = getCurvePos(xDist, z, 0);
 
     dummy.position.set(pos.x, pos.y, pos.z);
     dummy.scale.set(s, s, s);
     dummy.rotation.set(0, rnd() * Math.PI * 2, 0);
     dummy.updateMatrix();
-    palmTrunks.setMatrixAt(i, dummy.matrix);
-    palmCrowns.setMatrixAt(i, dummy.matrix);
+    palmTrunks.setMatrixAt(palmIdx, dummy.matrix);
+    palmCrowns.setMatrixAt(palmIdx, dummy.matrix);
+    palmIdx++;
   }
+  palmTrunks.count = palmIdx;
+  palmCrowns.count = palmIdx;
   palmTrunks.instanceMatrix.needsUpdate = true;
   palmCrowns.instanceMatrix.needsUpdate = true;
   sceneryGroup.add(palmTrunks, palmCrowns);
 
-  // 9. Ghat Trackside Lantana & Karvi Shrubbery
-  const bushCount = 140;
+  // 9. Ghat Trackside Lantana & Karvi Shrubbery (Radius 1.8m)
+  // Left: xDist <= -8.5m. Right: xDist >= +14.5m.
+  const bushCount = 130;
   const bushGeo = createBushGeometry();
   const bushes = new THREE.InstancedMesh(bushGeo, bushMat, bushCount);
   bushes.receiveShadow = true;
 
+  let bushIdx = 0;
   for (let i = 0; i < bushCount; i++) {
     const side = i % 2 === 0 ? -1 : 1;
-    const xDist = side === -1 ? -9 - rnd() * 12 : 12 + rnd() * 12;
+    const xDist = side === -1 ? -8.5 - rnd() * 10 : 14.5 + rnd() * 10;
     const z = startZ + 15 + (i / bushCount) * 3800;
-    const s = 0.8 + rnd() * 0.6;
+    if (isProtectedZone(z)) continue;
+    const s = 0.75 + rnd() * 0.5;
     const pos = getCurvePos(xDist, z, 0.2);
 
     dummy.position.set(pos.x, pos.y, pos.z);
     dummy.scale.set(s, s, s);
     dummy.rotation.set(0, rnd() * Math.PI * 2, 0);
     dummy.updateMatrix();
-    bushes.setMatrixAt(i, dummy.matrix);
+    bushes.setMatrixAt(bushIdx++, dummy.matrix);
   }
+  bushes.count = bushIdx;
   bushes.instanceMatrix.needsUpdate = true;
   sceneryGroup.add(bushes);
 
@@ -1322,10 +1370,12 @@ export function buildScenery(ctx: RendererContext, config: TrackConfig): THREE.G
   urbanTrunks.castShadow = true;
   urbanCrowns.castShadow = true;
 
+  let urbanTreeIdx = 0;
   for (let i = 0; i < urbanTreeCount; i++) {
     const side = i % 2 === 0 ? -1 : 1;
-    const xDist = side === -1 ? -22 - rnd() * 45 : 25 + rnd() * 45;
+    const xDist = side === -1 ? -24 - rnd() * 45 : 26 + rnd() * 45;
     const z = 3920 + (i / urbanTreeCount) * 4980;
+    if (isProtectedZone(z)) continue;
     const s = 0.75 + rnd() * 0.55;
     const pos = getCurvePos(xDist, z, 0);
 
@@ -1333,9 +1383,12 @@ export function buildScenery(ctx: RendererContext, config: TrackConfig): THREE.G
     dummy.scale.set(s, s, s);
     dummy.rotation.set(0, rnd() * Math.PI * 2, 0);
     dummy.updateMatrix();
-    urbanTrunks.setMatrixAt(i, dummy.matrix);
-    urbanCrowns.setMatrixAt(i, dummy.matrix);
+    urbanTrunks.setMatrixAt(urbanTreeIdx, dummy.matrix);
+    urbanCrowns.setMatrixAt(urbanTreeIdx, dummy.matrix);
+    urbanTreeIdx++;
   }
+  urbanTrunks.count = urbanTreeIdx;
+  urbanCrowns.count = urbanTreeIdx;
   urbanTrunks.instanceMatrix.needsUpdate = true;
   urbanCrowns.instanceMatrix.needsUpdate = true;
   sceneryGroup.add(urbanTrunks, urbanCrowns);

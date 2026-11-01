@@ -30,6 +30,18 @@ const physics = new TrainPhysics(route);
 const audio = new AudioController();
 const hud = new HUD();
 
+// Expose simulation systems for automated Play Agent and telemetry testing
+(window as any).__SIMULATOR__ = {
+  physics,
+  ctx,
+  hud,
+  audio,
+  trainAssembly,
+  signalSystem,
+  route,
+  getCameraMode: () => cameraMode
+};
+
 let cameraMode: CameraMode = CameraMode.TRACK;
 const keys: Record<string, boolean> = {};
 

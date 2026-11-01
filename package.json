@@ -6,13 +6,15 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:agent": "node scripts/play-game-agent.js"
   },
   "dependencies": {
     "three": "^0.170.0"
   },
   "devDependencies": {
     "@types/three": "^0.170.0",
+    "puppeteer-core": "^25.16.0",
     "typescript": "^5.6.3",
     "vite": "^5.4.10"
   }
